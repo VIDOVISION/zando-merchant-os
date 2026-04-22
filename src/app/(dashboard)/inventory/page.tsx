@@ -1057,18 +1057,6 @@ export default function InventoryPage() {
                     />
                   </label>
 
-                  {isCorrectionAdjustment ? (
-                    <div className="rounded-2xl border border-border bg-surface/40 p-4 md:col-span-2">
-                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted">
-                        Correction inventaire
-                      </p>
-                      <p className="mt-2 text-sm text-secondary">
-                        Saisissez le stock compt\u00e9 final. L'\u00e9cart sera calcul\u00e9
-                        automatiquement avant l'enregistrement.
-                      </p>
-                    </div>
-                  ) : null}
-
                   <label className="block md:col-span-2">
                     <span className={labelClass}>Note interne</span>
                     <textarea
