@@ -403,6 +403,40 @@ export default function SalesPage() {
       ),
     [salesLowStockInsights, todaySales.length]
   );
+  const beverageQuickPickProducts = useMemo(() => {
+    const topUnitsByProductId = new Map(
+      quickTopSellingSummary.map((product) => [product.productId, product.unitsSold])
+    );
+
+    return inventory
+      .filter(
+        (product) =>
+          product.isActive &&
+          product.category === "Beverages" &&
+          product.stockOnHand > 0
+      )
+      .sort((left, right) => {
+        const unitsDiff =
+          (topUnitsByProductId.get(right.id) ?? 0) -
+          (topUnitsByProductId.get(left.id) ?? 0);
+
+        if (unitsDiff !== 0) {
+          return unitsDiff;
+        }
+
+        const leftStockPriority =
+          left.stockStatus === "Low Stock" ? 0 : left.stockStatus === "Healthy" ? 1 : 2;
+        const rightStockPriority =
+          right.stockStatus === "Low Stock" ? 0 : right.stockStatus === "Healthy" ? 1 : 2;
+
+        if (leftStockPriority !== rightStockPriority) {
+          return leftStockPriority - rightStockPriority;
+        }
+
+        return left.name.localeCompare(right.name);
+      })
+      .slice(0, 6);
+  }, [inventory, quickTopSellingSummary]);
 
   function resetForm() {
     setProductQuery("");
@@ -821,6 +855,48 @@ export default function SalesPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+            {beverageQuickPickProducts.length > 0 ? (
+              <div className="rounded-2xl border border-border bg-surface/45 p-4">
+                <div className="flex flex-col gap-1">
+                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted">
+                    Ventes rapides boissons
+                  </p>
+                  <p className="text-sm text-secondary">
+                    Touchez une boisson fréquente pour préparer la vente plus vite.
+                  </p>
+                </div>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {beverageQuickPickProducts.map((product) => {
+                    const isSelected = selectedProduct?.id === product.id;
+
+                    return (
+                      <button
+                        key={product.id}
+                        type="button"
+                        onClick={() => handleSelectProduct(product.id)}
+                        className={`rounded-2xl border px-4 py-3 text-left transition-colors ${
+                          isSelected
+                            ? "border-accent/40 bg-accent/10"
+                            : "border-border bg-background/40 hover:border-accent/25 hover:bg-surface-bright"
+                        }`}
+                      >
+                        <p className="truncate text-sm font-medium text-primary">
+                          {product.name}
+                        </p>
+                        <p className="mt-1 text-xs text-muted">
+                          {product.stockOnHand} en stock | {product.supplier}
+                        </p>
+                        <p className="mt-2 text-xs font-medium text-accent">
+                          {formatCdf(product.sellingPrice)}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
             <div className="relative">
               <label className="block text-xs font-medium uppercase tracking-[0.2em] text-muted">
                 Produit
@@ -840,7 +916,7 @@ export default function SalesPage() {
                       key={product.id}
                       type="button"
                       onClick={() => handleSelectProduct(product.id)}
-                      className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition-colors hover:bg-surface-bright"
+                      className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-left transition-colors hover:bg-surface-bright"
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-primary">
@@ -908,7 +984,7 @@ export default function SalesPage() {
                 <button
                   type="button"
                   onClick={handleEnableQuickAdd}
-                  className="rounded-xl border border-accent/20 bg-accent/10 px-3 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
+                  className="w-full rounded-xl border border-accent/20 bg-accent/10 px-3 py-3 text-sm font-medium text-accent transition-colors hover:bg-accent/20 sm:w-auto"
                 >
                   Ajouter vite "{productQuery.trim()}"
                 </button>
@@ -975,6 +1051,7 @@ export default function SalesPage() {
                     </span>
                     <input
                       type="number"
+                      inputMode="numeric"
                       min="0"
                       step="100"
                       value={quickAddSellingPrice}
@@ -995,6 +1072,7 @@ export default function SalesPage() {
                     </span>
                     <input
                       type="number"
+                      inputMode="numeric"
                       min="0"
                       value={quickAddStartingStock}
                       onChange={(event) => setQuickAddStartingStock(event.target.value)}
@@ -1016,6 +1094,7 @@ export default function SalesPage() {
                 </span>
                 <input
                   type="number"
+                  inputMode="numeric"
                   min="1"
                   value={quantity}
                   onChange={(event) => setQuantity(event.target.value)}
@@ -1029,6 +1108,7 @@ export default function SalesPage() {
                 </span>
                 <input
                   type="number"
+                  inputMode="numeric"
                   min="0"
                   step="100"
                   value={unitPrice}
@@ -1129,7 +1209,7 @@ export default function SalesPage() {
             <button
               type="submit"
               disabled={!canSaveSale}
-              className="accent-gradient btn-shine w-full rounded-xl px-4 py-3 text-sm font-medium text-background disabled:cursor-not-allowed disabled:opacity-50"
+              className="accent-gradient btn-shine w-full rounded-xl px-4 py-3.5 text-base font-medium text-background disabled:cursor-not-allowed disabled:opacity-50"
             >
               Enregistrer la vente
             </button>

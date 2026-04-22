@@ -316,7 +316,7 @@ export default function HomePage() {
         <button
           type="button"
           onClick={handleStartNewOrder}
-          className="accent-gradient btn-shine rounded-xl px-4 py-2.5 text-sm font-medium text-background"
+          className="accent-gradient btn-shine w-full rounded-xl px-4 py-3 text-sm font-medium text-background sm:w-auto"
         >
           Nouvelle commande
         </button>
@@ -424,7 +424,7 @@ export default function HomePage() {
                     <button
                       type="button"
                       onClick={() => handleQuickReorderFromProduct(product.id)}
-                      className="rounded-xl border border-accent/20 bg-accent/10 px-3 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
+                      className="w-full rounded-xl border border-accent/20 bg-accent/10 px-3 py-3 text-sm font-medium text-accent transition-colors hover:bg-accent/20 sm:w-auto"
                     >
                       Préparer le réappro
                     </button>
@@ -511,20 +511,20 @@ export default function HomePage() {
                         </p>
                       </div>
 
-                      <div className="flex flex-wrap gap-2 lg:justify-end">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap lg:justify-end">
                         {isEditableMerchantOrder(order.status) ? (
                           <>
                             <button
                               type="button"
                               onClick={() => setSelectedOrder(order)}
-                              className="rounded-xl border border-border px-3 py-2 text-xs font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary"
+                              className="w-full rounded-xl border border-border px-3 py-3 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary sm:w-auto"
                             >
                               Voir le panier
                             </button>
                             <button
                               type="button"
                               onClick={() => handleContinueSavedDraft(order)}
-                              className="rounded-xl border border-accent/20 bg-accent/10 px-3 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
+                              className="w-full rounded-xl border border-accent/20 bg-accent/10 px-3 py-3 text-sm font-medium text-accent transition-colors hover:bg-accent/20 sm:w-auto"
                             >
                               Continuer
                             </button>
@@ -534,14 +534,14 @@ export default function HomePage() {
                             <button
                               type="button"
                               onClick={() => handleReloadOrderBasket(order)}
-                              className="rounded-xl border border-border px-3 py-2 text-xs font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary"
+                              className="w-full rounded-xl border border-border px-3 py-3 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary sm:w-auto"
                             >
                               Relancer le panier
                             </button>
                             <button
                               type="button"
                               onClick={() => setSelectedOrder(order)}
-                              className="rounded-xl border border-accent/20 bg-accent/10 px-3 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
+                              className="w-full rounded-xl border border-accent/20 bg-accent/10 px-3 py-3 text-sm font-medium text-accent transition-colors hover:bg-accent/20 sm:w-auto"
                             >
                               Voir le panier
                             </button>

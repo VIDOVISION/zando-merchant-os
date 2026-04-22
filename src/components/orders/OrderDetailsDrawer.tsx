@@ -129,7 +129,7 @@ export default function OrderDetailsDrawer({
             <button
               type="button"
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-bright hover:text-primary"
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-bright hover:text-primary"
               aria-label="Fermer le détail de la commande"
             >
               <svg
@@ -161,7 +161,7 @@ export default function OrderDetailsDrawer({
             </span>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-border bg-surface-bright/60 p-4">
               <p className="text-xs text-muted">Date de commande</p>
               <p className="mt-2 text-sm font-medium text-primary">

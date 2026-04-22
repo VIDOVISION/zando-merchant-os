@@ -558,18 +558,18 @@ export default function InventoryPage() {
             produit, mettez à jour ses données utiles, ajustez les quantités et
             suivez les derniers mouvements sans alourdir le MVP.
           </p>
-          <div className="mt-4 flex flex-wrap gap-3">
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <button
               type="button"
               onClick={openCreatePanel}
-              className="accent-gradient btn-shine rounded-xl px-4 py-2.5 text-sm font-medium text-background"
+              className="accent-gradient btn-shine w-full rounded-xl px-4 py-3 text-sm font-medium text-background sm:w-auto"
             >
               Ajouter un produit
             </button>
             <button
               type="button"
               onClick={() => openAdjustPanel()}
-              className="rounded-xl border border-border bg-surface/60 px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:border-accent/30 hover:text-accent"
+              className="w-full rounded-xl border border-border bg-surface/60 px-4 py-3 text-sm font-medium text-primary transition-colors hover:border-accent/30 hover:text-accent sm:w-auto"
             >
               Ajuster le stock
             </button>
@@ -1205,18 +1205,18 @@ export default function InventoryPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                   <button
                     type="button"
                     onClick={() => openEditPanel(selectedProduct)}
-                    className="rounded-xl border border-border px-3 py-2 text-xs font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary"
+                    className="w-full rounded-xl border border-border px-3 py-3 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary sm:w-auto"
                   >
                     Modifier
                   </button>
                   <button
                     type="button"
                     onClick={() => openAdjustPanel(selectedProduct.id)}
-                    className="rounded-xl border border-border px-3 py-2 text-xs font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary"
+                    className="w-full rounded-xl border border-border px-3 py-3 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary sm:w-auto"
                   >
                     Ajuster le stock
                   </button>
@@ -1224,7 +1224,7 @@ export default function InventoryPage() {
                     type="button"
                     onClick={() => handleReorder(selectedProduct.id)}
                     disabled={!selectedProduct.isActive}
-                    className="rounded-xl border border-accent/20 bg-accent/10 px-3 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="w-full rounded-xl border border-accent/20 bg-accent/10 px-3 py-3 text-sm font-medium text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                   >
                     Préparer le réappro
                   </button>
@@ -1388,8 +1388,8 @@ export default function InventoryPage() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 md:flex-row">
-            <label className="relative block min-w-[260px]">
+          <div className="flex w-full flex-col gap-3 md:flex-row md:items-start">
+            <label className="relative block w-full md:min-w-[260px]">
               <span className="sr-only">Rechercher dans le stock</span>
               <svg
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
@@ -1435,7 +1435,125 @@ export default function InventoryPage() {
           </div>
         </div>
 
-        <div className="mt-5 overflow-x-auto">
+        <div className="mt-5 space-y-3 lg:hidden">
+          {filteredProducts.map((product) => (
+            <div
+              key={`mobile-${product.id}`}
+              className={`rounded-2xl border border-border bg-surface/50 p-4 ${
+                product.isActive ? "" : "opacity-75"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => openEditPanel(product)}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <p className="text-base font-medium text-primary">{product.name}</p>
+                  <p className="mt-1 text-xs text-muted">
+                    {getMerchantCategoryLabel(product.category)} | {product.packSize}
+                  </p>
+                  <p className="mt-2 text-xs text-secondary">
+                    {product.supplier} | {product.neighborhood}
+                  </p>
+                </button>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <span
+                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
+                      STOCK_STYLES[product.stockStatus]
+                    }`}
+                  >
+                    {getInventoryStatusLabel(product.stockStatus)}
+                  </span>
+                  <span
+                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
+                      product.isActive
+                        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
+                        : "border-slate-500/20 bg-slate-500/10 text-slate-300"
+                    }`}
+                  >
+                    {getActiveLabel(product.isActive)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-border bg-surface/40 p-3">
+                  <p className="text-xs text-muted">Stock</p>
+                  <p className="mt-1 text-sm font-medium text-primary">
+                    {product.stockOnHand} unités
+                  </p>
+                  <p className="mt-1 text-xs text-secondary">
+                    Seuil {product.reorderPoint}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-border bg-surface/40 p-3">
+                  <p className="text-xs text-muted">En commande</p>
+                  <p className="mt-1 text-sm font-medium text-primary">
+                    {product.onOrder} unités
+                  </p>
+                  <p className="mt-1 text-xs text-secondary">
+                    Réappro {product.reorderQuantity}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-border bg-surface/40 p-3">
+                  <p className="text-xs text-muted">Prix</p>
+                  <p className="mt-1 text-sm font-medium text-accent">
+                    {formatCdf(product.unitPrice)}
+                  </p>
+                  <p className="mt-1 text-xs text-secondary">
+                    Vente {formatCdf(product.sellingPrice)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => openAdjustPanel(product.id)}
+                  className="w-full rounded-xl border border-border px-4 py-3 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary"
+                >
+                  Ajuster le stock
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openEditPanel(product)}
+                  className="w-full rounded-xl border border-border px-4 py-3 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary"
+                >
+                  Modifier le produit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleReorder(product.id)}
+                  disabled={!product.isActive}
+                  className={`w-full rounded-xl border px-4 py-3 text-sm font-medium transition-colors ${
+                    !product.isActive
+                      ? "cursor-not-allowed border-border text-muted opacity-60"
+                      : product.stockStatus === "Healthy"
+                        ? "border-border text-secondary hover:border-accent/40 hover:text-primary"
+                        : "border-accent/20 bg-accent/10 text-accent hover:bg-accent/20"
+                  }`}
+                >
+                  Préparer le réappro
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {filteredProducts.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border px-6 py-10 text-center">
+              <p className="text-sm text-primary">
+                Aucun produit ne correspond Ã  cette vue.
+              </p>
+              <p className="mt-1 text-xs text-muted">
+                Essayez une autre recherche, changez le filtre ou ajoutez un nouveau
+                produit.
+              </p>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-5 hidden overflow-x-auto lg:block">
           <table className="w-full min-w-[1180px] text-sm">
             <thead>
               <tr className="border-b border-border text-left">

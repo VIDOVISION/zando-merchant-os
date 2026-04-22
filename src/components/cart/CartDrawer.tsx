@@ -67,7 +67,7 @@ export default function CartDrawer() {
             <button
               type="button"
               onClick={closeCart}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-bright hover:text-primary"
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-bright hover:text-primary"
               aria-label="Fermer le brouillon"
             >
               <svg
@@ -179,7 +179,7 @@ export default function CartDrawer() {
                   <button
                     type="button"
                     onClick={() => removeItem(item.id)}
-                    className="ml-1 flex h-6 w-6 items-center justify-center rounded text-muted transition-colors hover:text-rose-300"
+                    className="ml-1 flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-bright hover:text-rose-300"
                     aria-label={`Retirer ${item.name}`}
                   >
                     <svg
@@ -206,17 +206,17 @@ export default function CartDrawer() {
                     <button
                       type="button"
                       onClick={() => updateQty(item.id, item.quantity - 1)}
-                      className="flex h-6 w-6 items-center justify-center rounded border border-border text-sm text-secondary transition-colors hover:border-accent hover:text-accent"
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-border text-base text-secondary transition-colors hover:border-accent hover:text-accent"
                     >
                       -
                     </button>
-                    <span className="w-6 text-center text-sm font-medium text-primary">
+                    <span className="w-8 text-center text-sm font-medium text-primary">
                       {item.quantity}
                     </span>
                     <button
                       type="button"
                       onClick={() => updateQty(item.id, item.quantity + 1)}
-                      className="flex h-6 w-6 items-center justify-center rounded border border-border text-sm text-secondary transition-colors hover:border-accent hover:text-accent"
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-border text-base text-secondary transition-colors hover:border-accent hover:text-accent"
                     >
                       +
                     </button>
@@ -241,7 +241,7 @@ export default function CartDrawer() {
                 closeCart();
                 router.push("/order-summary");
               }}
-              className="accent-gradient btn-shine w-full rounded-lg py-2.5 text-sm font-medium text-background"
+              className="accent-gradient btn-shine w-full rounded-xl py-3 text-sm font-medium text-background"
             >
               Vérifier et confirmer
             </button>

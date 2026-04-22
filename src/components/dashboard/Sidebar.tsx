@@ -138,12 +138,12 @@ export default function Sidebar() {
             <span className="font-heading text-sm font-bold tracking-tight text-primary truncate">Zando</span>
           )}
         </Link>
-        <button onClick={toggleCollapsed} className="hidden lg:flex items-center justify-center w-6 h-6 rounded-md text-muted hover:text-secondary hover:bg-sidebar-hover transition-colors" aria-label={collapsed ? "Déplier la barre latérale" : "Replier la barre latérale"}>
+        <button onClick={toggleCollapsed} className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg text-muted hover:text-secondary hover:bg-sidebar-hover transition-colors" aria-label={collapsed ? "Déplier la barre latérale" : "Replier la barre latérale"}>
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             {collapsed ? <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /> : <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />}
           </svg>
         </button>
-        <button onClick={closeMobile} className="lg:hidden flex items-center justify-center w-6 h-6 rounded-md text-muted hover:text-secondary hover:bg-sidebar-hover transition-colors" aria-label="Fermer la barre latérale">
+        <button onClick={closeMobile} className="lg:hidden flex items-center justify-center w-10 h-10 rounded-xl text-muted hover:text-secondary hover:bg-sidebar-hover transition-colors" aria-label="Fermer la barre latérale">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
           </svg>
@@ -155,7 +155,7 @@ export default function Sidebar() {
           const active = isActive(item.href);
           return (
             <Link key={item.href} href={item.href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+              className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-3 text-sm transition-colors ${
                 active ? "bg-sidebar-active text-primary border border-border" : "text-secondary hover:text-primary hover:bg-sidebar-hover border border-transparent"
               } ${collapsed ? "justify-center px-2" : ""}`}
               title={collapsed ? item.label : undefined}
@@ -169,7 +169,7 @@ export default function Sidebar() {
 
       <div className="px-2 py-3 border-t border-sidebar-border">
         <button onClick={handleSignOut}
-          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-secondary hover:text-primary hover:bg-sidebar-hover transition-colors w-full ${collapsed ? "justify-center px-2" : ""}`}
+          className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-3 text-sm text-secondary hover:text-primary hover:bg-sidebar-hover transition-colors w-full ${collapsed ? "justify-center px-2" : ""}`}
           title={collapsed ? "Déconnexion" : undefined}
         >
           <svg className="w-5 h-5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -187,7 +187,7 @@ export default function Sidebar() {
         {sidebarContent}
       </aside>
       {mobileOpen && <div className="fixed inset-0 z-40 sidebar-overlay lg:hidden" onClick={closeMobile} aria-hidden="true" />}
-      <aside className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-sidebar border-r border-sidebar-border w-60 lg:hidden transition-transform duration-300 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[88vw] flex-col bg-sidebar border-r border-sidebar-border lg:hidden transition-transform duration-300 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
         {sidebarContent}
       </aside>
     </>
