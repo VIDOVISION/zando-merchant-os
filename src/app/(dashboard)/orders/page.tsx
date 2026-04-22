@@ -74,11 +74,11 @@ function getOrderActionHint(order: MerchantOrder): string {
 
 function getOrdersStatusLabel(order: MerchantOrder): string {
   if (isEditableMerchantOrder(order.status)) {
-    return "Brouillon enregistré";
+    return "Brouillon";
   }
 
   if (isWaitingSupplierMerchantOrder(order.status)) {
-    return "En attente de confirmation fournisseur";
+    return "En attente fournisseur";
   }
 
   if (isOnTheWayMerchantOrder(order.status)) {
@@ -94,7 +94,7 @@ function getOrdersStatusLabel(order: MerchantOrder): string {
 
 function getOrdersSourceLabel(order: MerchantOrder): string {
   if (order.sourceDetail === "saved-basket-reload") {
-    return "Ancien panier";
+    return "Panier relancé";
   }
 
   if (order.sourceDetail === "inventory-restock") {
@@ -453,7 +453,7 @@ export default function OrdersPage() {
                             onClick={() => handleResumeDraft(order)}
                             className="rounded-xl border border-accent/20 bg-accent/10 px-3 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
                           >
-                            Continuer la modification
+                            Continuer le brouillon
                           </button>
                         </>
                       ) : isDeliveredMerchantOrder(order.status) ? (
@@ -548,7 +548,7 @@ export default function OrdersPage() {
                   </p>
                   <p className="mt-2 text-xs text-muted">
                     {isEditableMerchantOrder(order.status)
-                      ? "Encore modifiable, pas encore envoyée"
+                      ? "Brouillon encore modifiable, pas encore envoyé"
                       : "Envoyée, en attente du retour fournisseur"}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -559,7 +559,7 @@ export default function OrdersPage() {
                           onClick={() => handleResumeDraft(order)}
                           className="rounded-xl border border-accent/20 bg-accent/10 px-3 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
                         >
-                          Continuer la modification
+                          Continuer le brouillon
                         </button>
                         <button
                           type="button"

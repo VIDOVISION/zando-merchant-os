@@ -1,7 +1,11 @@
 "use client";
 
 import { useCart } from "@/components/cart/CartContext";
-import { formatCdf, type InventoryProduct } from "@/lib/merchant-data";
+import {
+  formatCdf,
+  getMerchantCategoryLabel,
+  type InventoryProduct,
+} from "@/lib/merchant-data";
 
 const STOCK_STYLES = {
   Healthy: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20",
@@ -15,6 +19,12 @@ export default function CatalogueGrid({
   products: InventoryProduct[];
 }) {
   const { addItem, items, updateQty, openCart } = useCart();
+
+  function getStockLabel(status: InventoryProduct["stockStatus"]): string {
+    if (status === "Healthy") return "Stock correct";
+    if (status === "Low Stock") return "Stock bas";
+    return "Rupture";
+  }
 
   function getCartQty(id: string): number {
     return items.find((item) => item.id === id)?.quantity ?? 0;
@@ -45,14 +55,14 @@ export default function CatalogueGrid({
                   STOCK_STYLES[product.stockStatus]
                 }`}
               >
-                {product.stockStatus}
+                {getStockLabel(product.stockStatus)}
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-surface/50 p-3">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
-                  Price
+                  Prix
                 </p>
                 <p className="mt-1 text-lg font-semibold text-accent">
                   {formatCdf(product.unitPrice)}
@@ -60,7 +70,7 @@ export default function CatalogueGrid({
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
-                  On hand
+                  En stock
                 </p>
                 <p className="mt-1 text-lg font-semibold text-primary">
                   {product.stockOnHand}
@@ -69,12 +79,12 @@ export default function CatalogueGrid({
             </div>
 
             <div className="space-y-1 text-xs text-secondary">
-              <p>{product.category}</p>
+              <p>{getMerchantCategoryLabel(product.category)}</p>
               <p>
-                Pack size {product.packSize} | Min order {product.minOrder}
+                Conditionnement {product.packSize} | Minimum {product.minOrder}
               </p>
               <p>
-                Reorder point {product.reorderPoint} | Inbound {product.onOrder}
+                Seuil de réappro {product.reorderPoint} | En commande {product.onOrder}
               </p>
             </div>
 
@@ -104,7 +114,7 @@ export default function CatalogueGrid({
                   onClick={openCart}
                   className="rounded-xl border border-accent/20 bg-accent/10 px-3 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
                 >
-                  Open draft
+                  Ouvrir le brouillon
                 </button>
               </div>
             ) : (
@@ -122,7 +132,7 @@ export default function CatalogueGrid({
                 }
                 className="accent-gradient btn-shine w-full rounded-xl py-2.5 text-sm font-medium text-background disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {outOfStock ? "Unavailable now" : "Add to draft order"}
+                {outOfStock ? "Indisponible" : "Ajouter au brouillon"}
               </button>
             )}
           </div>

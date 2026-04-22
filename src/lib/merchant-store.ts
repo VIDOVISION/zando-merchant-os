@@ -6,6 +6,7 @@ import {
   getMerchantOrderSourceDetail,
   getSeedInventoryProducts,
   type MerchantActivity,
+  type MerchantInventoryMovement,
   type MerchantOrder,
   type MerchantOrderItem,
   type MerchantOrderSourceDetail,
@@ -36,6 +37,7 @@ export interface InventoryItemRow {
   reorder_quantity: number;
   lead_time_days: number;
   last_restocked_at: string;
+  is_active: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -105,12 +107,25 @@ export interface ActivityFeedRow {
   created_at: string;
 }
 
+export interface InventoryMovementRow {
+  id: string;
+  merchant_id: string;
+  product_id: string;
+  product_name: string;
+  movement_type: MerchantInventoryMovement["reason"];
+  quantity_change: number;
+  stock_after: number;
+  note: string | null;
+  created_at: string;
+}
+
 interface SeedBackfillPayload {
   orders: SupplierOrderRow[];
   orderItems: SupplierOrderItemRow[];
   sales: SaleRow[];
   activities: ActivityFeedRow[];
   deliveryUpdates: DeliveryUpdateRow[];
+  inventoryMovements: InventoryMovementRow[];
 }
 
 export function deriveMerchantProfile(
@@ -175,6 +190,7 @@ function buildSeedInventoryRows(
     reorder_quantity: product.reorderQuantity,
     lead_time_days: product.leadTimeDays,
     last_restocked_at: product.lastRestockedAt,
+    is_active: product.isActive,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }));
@@ -193,7 +209,7 @@ async function ensureSeedInventoryRows(
       .from("inventory_items")
       .insert(seededRows)
       .select(
-        "id, merchant_id, sku, name, category, supplier, neighborhood, unit_price, selling_price, pack_size, min_order, stock_on_hand, reorder_point, reorder_quantity, lead_time_days, last_restocked_at, created_at, updated_at"
+        "id, merchant_id, sku, name, category, supplier, neighborhood, unit_price, selling_price, pack_size, min_order, stock_on_hand, reorder_point, reorder_quantity, lead_time_days, last_restocked_at, is_active, created_at, updated_at"
       );
 
     if (error) {
@@ -239,6 +255,34 @@ function buildSeedProductIdMap(
 
 function toScopedSeedId(merchantId: string, seedId: string): string {
   return buildMerchantScopedId(merchantId, seedId);
+}
+
+function buildSeedInventoryMovementKey(
+  merchantId: string,
+  movementId: string
+): string {
+  return toScopedSeedId(merchantId, movementId);
+}
+
+function appendSeedInventoryMovementKey(
+  note: string | undefined,
+  seedKey: string
+): string {
+  const trimmedNote = note?.trim();
+  const seedMarker = `[seed:${seedKey}]`;
+
+  return trimmedNote ? `${trimmedNote} ${seedMarker}` : seedMarker;
+}
+
+function getSeedInventoryMovementKey(
+  note: string | null | undefined
+): string | null {
+  if (!note) {
+    return null;
+  }
+
+  const match = note.match(/\[seed:([^[\]]+)\]/);
+  return match?.[1] ?? null;
 }
 
 function buildSeedBackfillPayload(
@@ -300,33 +344,59 @@ function buildSeedBackfillPayload(
       created_at: order.createdAt,
     }));
 
+  const inventoryMovements = seededState.inventoryMovements.map((movement) => {
+    const seedKey = buildSeedInventoryMovementKey(merchantId, movement.id);
+
+    return toInventoryMovementRow(merchantId, {
+      ...movement,
+      id: crypto.randomUUID(),
+      productId: productIdMap.get(movement.productId) ?? movement.productId,
+      note: appendSeedInventoryMovementKey(movement.note, seedKey),
+    });
+  });
+
   return {
     orders,
     orderItems,
     sales,
     activities,
     deliveryUpdates,
+    inventoryMovements,
   };
 }
 
 function buildSeedEtaAt(order: MerchantOrder): string | null {
   const createdAt = new Date(order.createdAt);
   const [day, monthLabel] = order.deliveryDate.split(" ");
+  const normalizedMonthLabel = (monthLabel ?? "")
+    .replace(".", "")
+    .toLowerCase();
   const monthMap = new Map([
-    ["Jan", 0],
-    ["Feb", 1],
-    ["Mar", 2],
-    ["Apr", 3],
-    ["May", 4],
-    ["Jun", 5],
-    ["Jul", 6],
-    ["Aug", 7],
-    ["Sep", 8],
-    ["Oct", 9],
-    ["Nov", 10],
-    ["Dec", 11],
+    ["jan", 0],
+    ["janv", 0],
+    ["feb", 1],
+    ["fev", 1],
+    ["févr", 1],
+    ["mar", 2],
+    ["apr", 3],
+    ["avr", 3],
+    ["may", 4],
+    ["mai", 4],
+    ["jun", 5],
+    ["juin", 5],
+    ["jul", 6],
+    ["juil", 6],
+    ["aug", 7],
+    ["aout", 7],
+    ["août", 7],
+    ["sep", 8],
+    ["sept", 8],
+    ["oct", 9],
+    ["nov", 10],
+    ["dec", 11],
+    ["déc", 11],
   ]);
-  const monthIndex = monthMap.get(monthLabel ?? "");
+  const monthIndex = monthMap.get(normalizedMonthLabel);
   const dayNumber = Number.parseInt(day ?? "", 10);
 
   if (monthIndex == null || Number.isNaN(dayNumber)) {
@@ -348,6 +418,7 @@ async function maybeBackfillSeedMerchantData(
     saleRows: SaleRow[];
     activityRows: ActivityFeedRow[];
     deliveryUpdateRows: DeliveryUpdateRow[];
+    inventoryMovementRows: InventoryMovementRow[];
   }
 ): Promise<boolean> {
   const payload = buildSeedBackfillPayload(merchantId, inventoryRows);
@@ -359,6 +430,11 @@ async function maybeBackfillSeedMerchantData(
   const existingActivityIds = new Set(existingData.activityRows.map((row) => row.id));
   const existingDeliveryUpdateIds = new Set(
     existingData.deliveryUpdateRows.map((row) => row.id)
+  );
+  const existingInventoryMovementKeys = new Set(
+    existingData.inventoryMovementRows
+      .map((row) => getSeedInventoryMovementKey(row.note))
+      .filter((seedKey): seedKey is string => seedKey != null)
   );
 
   const missingOrders = payload.orders.filter((row) => !existingOrderIds.has(row.id));
@@ -372,12 +448,19 @@ async function maybeBackfillSeedMerchantData(
   const missingDeliveryUpdates = payload.deliveryUpdates.filter(
     (row) => !existingDeliveryUpdateIds.has(row.id)
   );
+  const missingInventoryMovements = payload.inventoryMovements.filter(
+    (row) => {
+      const seedKey = getSeedInventoryMovementKey(row.note);
+      return seedKey == null || !existingInventoryMovementKeys.has(seedKey);
+    }
+  );
 
   if (
     missingOrders.length === 0 &&
     missingSales.length === 0 &&
     missingActivities.length === 0 &&
-    missingDeliveryUpdates.length === 0
+    missingDeliveryUpdates.length === 0 &&
+    missingInventoryMovements.length === 0
   ) {
     return false;
   }
@@ -425,6 +508,17 @@ async function maybeBackfillSeedMerchantData(
     }
   }
 
+  if (missingInventoryMovements.length > 0) {
+    const { error } = await supabase
+      .from("inventory_movements")
+      .insert(missingInventoryMovements);
+    if (error) {
+      throw new Error(
+        `Unable to backfill seeded inventory movements: ${error.message}`
+      );
+    }
+  }
+
   return true;
 }
 
@@ -444,6 +538,7 @@ export async function loadMerchantState(
     saleRowsResult,
     activityRowsResult,
     deliveryUpdateRowsResult,
+    inventoryMovementRowsResult,
   ] = await Promise.all([
     supabase
       .from("supplier_orders")
@@ -476,6 +571,13 @@ export async function loadMerchantState(
       .select("id, merchant_id, supplier_order_id, status, note, created_at")
       .eq("merchant_id", merchantId)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("inventory_movements")
+      .select(
+        "id, merchant_id, product_id, product_name, movement_type, quantity_change, stock_after, note, created_at"
+      )
+      .eq("merchant_id", merchantId)
+      .order("created_at", { ascending: false }),
   ]);
 
   if (orderRowsResult.error) {
@@ -504,6 +606,12 @@ export async function loadMerchantState(
     );
   }
 
+  if (inventoryMovementRowsResult.error) {
+    throw new Error(
+      `Unable to load inventory movements: ${inventoryMovementRowsResult.error.message}`
+    );
+  }
+
   const backfilledSeedData = await maybeBackfillSeedMerchantData(
     supabase,
     merchantId,
@@ -516,6 +624,8 @@ export async function loadMerchantState(
       activityRows: (activityRowsResult.data as ActivityFeedRow[] | null) ?? [],
       deliveryUpdateRows:
         (deliveryUpdateRowsResult.data as DeliveryUpdateRow[] | null) ?? [],
+      inventoryMovementRows:
+        (inventoryMovementRowsResult.data as InventoryMovementRow[] | null) ?? [],
     }
   );
 
@@ -526,6 +636,7 @@ export async function loadMerchantState(
       saleRowsResult,
       activityRowsResult,
       deliveryUpdateRowsResult,
+      inventoryMovementRowsResult,
     ] = await Promise.all([
       supabase
         .from("supplier_orders")
@@ -558,6 +669,13 @@ export async function loadMerchantState(
         .select("id, merchant_id, supplier_order_id, status, note, created_at")
         .eq("merchant_id", merchantId)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("inventory_movements")
+        .select(
+          "id, merchant_id, product_id, product_name, movement_type, quantity_change, stock_after, note, created_at"
+        )
+        .eq("merchant_id", merchantId)
+        .order("created_at", { ascending: false }),
     ]);
 
     if (orderRowsResult.error) {
@@ -583,6 +701,12 @@ export async function loadMerchantState(
         `Unable to reload activity after seed backfill: ${activityRowsResult.error.message}`
       );
     }
+
+    if (inventoryMovementRowsResult.error) {
+      throw new Error(
+        `Unable to reload inventory movements after seed backfill: ${inventoryMovementRowsResult.error.message}`
+      );
+    }
   }
 
   return {
@@ -596,6 +720,10 @@ export async function loadMerchantState(
     activities: ((activityRowsResult.data as ActivityFeedRow[] | null) ?? []).map(
       mapActivityRowToActivity
     ),
+    inventoryMovements:
+      ((inventoryMovementRowsResult.data as InventoryMovementRow[] | null) ?? []).map(
+        mapInventoryMovementRowToMovement
+      ),
   };
 }
 
@@ -606,7 +734,7 @@ async function fetchInventoryRows(
   const { data, error } = await supabase
     .from("inventory_items")
     .select(
-      "id, merchant_id, sku, name, category, supplier, neighborhood, unit_price, selling_price, pack_size, min_order, stock_on_hand, reorder_point, reorder_quantity, lead_time_days, last_restocked_at, created_at, updated_at"
+      "id, merchant_id, sku, name, category, supplier, neighborhood, unit_price, selling_price, pack_size, min_order, stock_on_hand, reorder_point, reorder_quantity, lead_time_days, last_restocked_at, is_active, created_at, updated_at"
     )
     .eq("merchant_id", merchantId)
     .order("name", { ascending: true });
@@ -635,6 +763,7 @@ export function mapInventoryItemRowToProduct(row: InventoryItemRow): MerchantPro
     reorderQuantity: row.reorder_quantity,
     leadTimeDays: row.lead_time_days,
     lastRestockedAt: row.last_restocked_at,
+    isActive: row.is_active,
   };
 }
 
@@ -661,6 +790,7 @@ export function toInventoryItemRow(
     reorder_quantity: product.reorderQuantity,
     lead_time_days: product.leadTimeDays,
     last_restocked_at: product.lastRestockedAt,
+    is_active: product.isActive,
     updated_at: timestamp,
   };
 }
@@ -702,7 +832,7 @@ function mapSupplierOrderRowsToOrders(
       }),
     createdAt: row.created_at,
     orderDate: formatShortDate(row.created_at),
-    deliveryDate: row.eta_at ? formatShortDate(row.eta_at) : "TBD",
+    deliveryDate: row.eta_at ? formatShortDate(row.eta_at) : "À confirmer",
     deliveryAddress: row.delivery_address,
     notes: row.notes ?? undefined,
     items: itemsByOrderId[row.id] ?? [],
@@ -767,6 +897,21 @@ function mapSaleRowToSale(row: SaleRow): MerchantSale {
   };
 }
 
+function mapInventoryMovementRowToMovement(
+  row: InventoryMovementRow
+): MerchantInventoryMovement {
+  return {
+    id: row.id,
+    productId: row.product_id,
+    productName: row.product_name,
+    reason: row.movement_type,
+    quantityChange: row.quantity_change,
+    stockAfter: row.stock_after,
+    note: row.note ?? undefined,
+    createdAt: row.created_at,
+  };
+}
+
 export function toSaleRow(merchantId: string, sale: MerchantSale): SaleRow {
   return {
     id: sale.id,
@@ -782,6 +927,23 @@ export function toSaleRow(merchantId: string, sale: MerchantSale): SaleRow {
     stock_after_sale: sale.stockAfterSale,
     triggered_low_stock: sale.triggeredLowStock,
     quick_added_product: sale.quickAddedProduct ?? false,
+  };
+}
+
+export function toInventoryMovementRow(
+  merchantId: string,
+  movement: MerchantInventoryMovement
+): InventoryMovementRow {
+  return {
+    id: movement.id,
+    merchant_id: merchantId,
+    product_id: movement.productId,
+    product_name: movement.productName,
+    movement_type: movement.reason,
+    quantity_change: movement.quantityChange,
+    stock_after: movement.stockAfter,
+    note: movement.note ?? null,
+    created_at: movement.createdAt,
   };
 }
 

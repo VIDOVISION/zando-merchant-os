@@ -35,6 +35,16 @@ function getOrderSourceDetailFromDraftIntent(draftIntent: CartDraftIntent) {
   return "manual-new-order" as const;
 }
 
+function isUnsetDeliveryAddress(value: string | undefined): boolean {
+  const normalizedValue = value?.trim() ?? "";
+
+  return (
+    normalizedValue.length === 0 ||
+    normalizedValue === "Delivery details pending" ||
+    normalizedValue === "Adresse de livraison à renseigner"
+  );
+}
+
 function getSupplierLabel(
   supplierNames: string[],
   fallbackSupplierName?: string
@@ -44,10 +54,10 @@ function getSupplierLabel(
   }
 
   if (supplierNames.length > 1) {
-    return `${supplierNames.length} suppliers in this basket`;
+    return `${supplierNames.length} fournisseurs dans ce panier`;
   }
 
-  return fallbackSupplierName ?? "Supplier will be set from selected items";
+  return fallbackSupplierName ?? "Le fournisseur sera défini à partir des articles sélectionnés";
 }
 
 export default function OrderSummaryPage() {
@@ -82,24 +92,23 @@ export default function OrderSummaryPage() {
     : getDraftIntentLabel(draftIntent);
   const draftStatusLabel = currentDraftOrder
     ? getMerchantOrderStatusLabel(currentDraftOrder.status)
-    : "Draft in progress";
+    : "Brouillon en cours";
   const draftStatusDescription = currentDraftOrder
     ? getMerchantOrderStatusDescription(currentDraftOrder.status)
-    : "This basket is still editable and has not yet been sent to the supplier.";
+    : "Ce brouillon est encore modifiable et n'a pas encore été envoyé au fournisseur.";
 
   useEffect(() => {
-    if (
-      currentDraftOrder &&
-      !address &&
-      currentDraftOrder.deliveryAddress !== "Delivery details pending"
-    ) {
-      setAddress(currentDraftOrder.deliveryAddress);
+    if (!currentDraftOrder) {
+      return;
     }
 
-    if (currentDraftOrder?.notes && !notes) {
-      setNotes(currentDraftOrder.notes);
-    }
-  }, [address, currentDraftOrder, notes]);
+    setAddress(
+      isUnsetDeliveryAddress(currentDraftOrder.deliveryAddress)
+        ? ""
+        : currentDraftOrder.deliveryAddress
+    );
+    setNotes(currentDraftOrder.notes ?? "");
+  }, [currentDraftOrder?.id]);
 
   useEffect(() => {
     if (!draftOrderId || currentDraftOrder?.status !== "Draft") {
@@ -113,7 +122,7 @@ export default function OrderSummaryPage() {
 
   async function handleConfirm() {
     if (!address.trim()) {
-      setError("Please enter a delivery address for this order.");
+      setError("Saisissez une adresse de livraison pour cette commande.");
       return;
     }
 
@@ -136,7 +145,7 @@ export default function OrderSummaryPage() {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Unable to confirm the order right now."
+          : "Impossible de confirmer la commande pour le moment."
       );
     } finally {
       setIsSubmitting(false);
@@ -148,14 +157,14 @@ export default function OrderSummaryPage() {
       <div className="max-w-3xl space-y-6">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-accent/80">
-            Order Confirmed
+            Commande confirmée
           </p>
           <h1 className="mt-2 font-heading text-3xl font-bold tracking-tight text-gradient">
-            Your supplier orders are now live
+            Vos commandes fournisseur sont bien enregistrées
           </h1>
           <p className="mt-2 text-sm text-secondary">
-            The new orders already appear in Orders, and Home has already
-            updated with the latest activity.
+            Les nouvelles commandes apparaissent déjà dans Commandes et
+            l'accueil a été mis à jour avec la dernière activité.
           </p>
         </div>
 
@@ -177,8 +186,9 @@ export default function OrderSummaryPage() {
           </div>
 
           <p className="mt-5 text-lg font-semibold text-primary">
-            Created {createdReferences.length} purchase order
-            {createdReferences.length === 1 ? "" : "s"}
+            {createdReferences.length === 1
+              ? "1 commande fournisseur créée"
+              : `${createdReferences.length} commandes fournisseur créées`}
           </p>
           <p className="mt-2 text-sm text-secondary">
             {createdReferences.join(", ")}
@@ -189,13 +199,13 @@ export default function OrderSummaryPage() {
               href="/orders"
               className="accent-gradient btn-shine rounded-xl px-5 py-2.5 text-sm font-medium text-background"
             >
-              Open Orders
+              Ouvrir les commandes
             </Link>
             <Link
               href="/home"
               className="rounded-xl border border-border px-5 py-2.5 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary"
             >
-              Back to Home
+              Retour à l'accueil
             </Link>
           </div>
         </div>
@@ -208,22 +218,22 @@ export default function OrderSummaryPage() {
       <div className="max-w-2xl space-y-6">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-accent/80">
-            Review and confirm
+            Vérifier et confirmer
           </p>
           <h1 className="mt-2 font-heading text-3xl font-bold tracking-tight text-gradient">
-            Your order draft is empty
+            Votre brouillon est vide
           </h1>
         </div>
 
         <div className="glass-card rounded-2xl p-10 text-center">
           <p className="text-sm text-secondary">
-            Add products from the catalogue before confirming an order.
+            Ajoutez des produits depuis le catalogue avant de confirmer une commande.
           </p>
           <Link
             href="/orders/new"
             className="mt-4 inline-block rounded-xl border border-accent/20 bg-accent/10 px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
           >
-            Back to draft
+            Retour au brouillon
           </Link>
         </div>
       </div>
@@ -236,7 +246,7 @@ export default function OrderSummaryPage() {
         <Link
           href="/orders/new"
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted transition-colors hover:border-accent/30 hover:text-primary"
-          aria-label="Back to catalogue"
+          aria-label="Retour au brouillon"
         >
           <svg
             className="h-5 w-5"
@@ -255,10 +265,10 @@ export default function OrderSummaryPage() {
 
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-accent/80">
-            Review and confirm
+            Vérifier et confirmer
           </p>
           <h1 className="mt-1 font-heading text-3xl font-bold tracking-tight text-gradient">
-            Confirm delivery details and submit
+            Confirmez la livraison puis envoyez la commande
           </h1>
           <p className="mt-1 text-sm text-secondary">
             {getDraftIntentDescription(draftIntent)}
@@ -275,7 +285,7 @@ export default function OrderSummaryPage() {
             {draftStatusLabel}
           </span>
           <span className="rounded-full border border-border px-2.5 py-1 text-xs font-medium text-muted">
-            Ready to confirm
+            Prêt à confirmer
           </span>
           {currentDraftOrder ? (
             <span className="rounded-full border border-border px-2.5 py-1 font-mono text-xs font-medium text-primary">
@@ -285,25 +295,25 @@ export default function OrderSummaryPage() {
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-border bg-surface/50 p-4">
-            <p className="text-xs text-muted">Supplier</p>
+            <p className="text-xs text-muted">Fournisseur</p>
             <p className="mt-2 text-sm font-medium text-primary">
               {supplierLabel}
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-surface/50 p-4">
-            <p className="text-xs text-muted">Line items</p>
+            <p className="text-xs text-muted">Lignes</p>
             <p className="mt-2 text-lg font-semibold text-primary">
               {items.length}
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-surface/50 p-4">
-            <p className="text-xs text-muted">Units</p>
+            <p className="text-xs text-muted">Unités</p>
             <p className="mt-2 text-lg font-semibold text-primary">
               {totalItems}
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-surface/50 p-4">
-            <p className="text-xs text-muted">Basket total</p>
+            <p className="text-xs text-muted">Total du panier</p>
             <p className="mt-2 text-lg font-semibold text-accent">
               {formatCdf(totalAmount)}
             </p>
@@ -311,19 +321,19 @@ export default function OrderSummaryPage() {
         </div>
         <p className="mt-4 text-sm text-secondary">
           {currentDraftOrder
-            ? `${currentDraftOrder.reference} is already saved in Orders. ${draftStatusDescription} You can still change quantities or remove lines before confirming.`
-            : `${draftStatusDescription} It will only become a live order after you confirm below.`}
+            ? `${currentDraftOrder.reference} est déjà enregistré dans Commandes. ${draftStatusDescription} Vous pouvez encore modifier les quantités ou retirer des lignes avant de confirmer.`
+            : `${draftStatusDescription} Il ne deviendra une commande active qu'après confirmation ci-dessous.`}
         </p>
       </div>
 
       <div className="glass-card overflow-hidden rounded-2xl">
         <div className="border-b border-border px-5 py-4">
           <h2 className="font-heading text-lg font-semibold text-primary">
-            Basket review
+            Vérification du panier
           </h2>
           <p className="mt-1 text-sm text-secondary">
-            Check quantities, remove anything you do not want, then confirm the
-            basket when it is ready to send.
+            Vérifiez les quantités, retirez ce qu'il faut, puis confirmez le
+            panier quand il est prêt à être envoyé.
           </p>
         </div>
         <div className="divide-y divide-border">
@@ -338,8 +348,8 @@ export default function OrderSummaryPage() {
                   {item.supplier}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-4 text-xs text-secondary">
-                  <span>Unit price {formatCdf(item.unit_price)}</span>
-                  <span>{item.min_order}</span>
+                  <span>Prix unitaire {formatCdf(item.unit_price)}</span>
+                  <span>Minimum {item.min_order}</span>
                 </div>
               </div>
               <div className="flex flex-col gap-3 lg:items-end">
@@ -348,7 +358,7 @@ export default function OrderSummaryPage() {
                     type="button"
                     onClick={() => updateQty(item.id, item.quantity - 1)}
                     className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-sm text-secondary transition-colors hover:border-accent hover:text-accent"
-                    aria-label={`Decrease quantity for ${item.name}`}
+                    aria-label={`Réduire la quantité de ${item.name}`}
                   >
                     -
                   </button>
@@ -359,7 +369,7 @@ export default function OrderSummaryPage() {
                     type="button"
                     onClick={() => updateQty(item.id, item.quantity + 1)}
                     className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-sm text-secondary transition-colors hover:border-accent hover:text-accent"
-                    aria-label={`Increase quantity for ${item.name}`}
+                    aria-label={`Augmenter la quantité de ${item.name}`}
                   >
                     +
                   </button>
@@ -368,12 +378,12 @@ export default function OrderSummaryPage() {
                     onClick={() => removeItem(item.id)}
                     className="rounded-lg border border-rose-500/20 px-3 py-1.5 text-xs font-medium text-rose-300 transition-colors hover:bg-rose-500/10"
                   >
-                    Remove
+                    Retirer
                   </button>
                 </div>
                 <div className="text-left lg:text-right">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
-                    Line total
+                    Total ligne
                   </p>
                   <p className="mt-1 text-sm font-semibold text-primary">
                     {formatCdf(item.unit_price * item.quantity)}
@@ -394,7 +404,7 @@ export default function OrderSummaryPage() {
 
       <div className="glass-card rounded-2xl p-5">
         <h2 className="font-heading text-lg font-semibold text-primary">
-          Delivery details
+          Détails de livraison
         </h2>
         <div className="mt-4 space-y-4">
           <div>
@@ -402,14 +412,14 @@ export default function OrderSummaryPage() {
               htmlFor="address"
               className="block text-xs font-medium uppercase tracking-[0.18em] text-muted"
             >
-              Delivery address
+              Adresse de livraison
             </label>
             <input
               id="address"
               type="text"
               value={address}
               onChange={(event) => setAddress(event.target.value)}
-              placeholder="Avenue Kianza 18, Quartier 3, Masina, Kinshasa"
+              placeholder="Ex. 1250 avenue Kianza, Masina"
               className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm text-primary placeholder:text-muted focus:border-accent/40 focus:outline-none focus:ring-1 focus:ring-accent/30"
             />
           </div>
@@ -419,13 +429,13 @@ export default function OrderSummaryPage() {
               htmlFor="notes"
               className="block text-xs font-medium uppercase tracking-[0.18em] text-muted"
             >
-              Delivery notes
+              Notes de livraison
             </label>
             <textarea
               id="notes"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              placeholder="Optional note for suppliers, receiving team, or preferred handoff time."
+              placeholder="Note optionnelle pour le fournisseur, la réception ou l'horaire souhaité."
               rows={3}
               className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-primary placeholder:text-muted focus:border-accent/40 focus:outline-none focus:ring-1 focus:ring-accent/30"
             />
@@ -445,7 +455,7 @@ export default function OrderSummaryPage() {
         disabled={isSubmitting}
         className="accent-gradient btn-shine w-full rounded-xl py-3 text-sm font-medium text-background disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isSubmitting ? "Confirming order..." : "Confirm order"}
+        {isSubmitting ? "Confirmation en cours..." : "Confirmer la commande"}
       </button>
     </div>
   );

@@ -16,6 +16,7 @@ import {
   toActivityFeedRow,
   toDeliveryUpdateRow,
   toInventoryItemRow,
+  toInventoryMovementRow,
   toSaleRow,
   toSupplierOrderItemRows,
   toSupplierOrderRow,
@@ -26,11 +27,14 @@ import {
   formatCdf,
   formatShortDate,
   getDeliveryTrackingStatus,
+  getMerchantPaymentMethodLabel,
   getNextDeliveryTrackingStatus,
   getStockStatus,
   isActiveOrder,
   isTrackedDeliveryOrder,
   type DeliveryTrackingStatus,
+  type MerchantInventoryMovement,
+  type MerchantInventoryMovementReason,
   type InventoryProduct,
   type MerchantActivity,
   type MerchantOrder,
@@ -70,6 +74,38 @@ interface SyncDraftOrderInput {
   items: CartItem[];
 }
 
+interface CreateInventoryProductInput {
+  name: string;
+  category: string;
+  supplier: string;
+  unitPrice: number;
+  sellingPrice: number;
+  packSize: string;
+  reorderPoint: number;
+  startingStock: number;
+}
+
+interface UpdateInventoryProductInput {
+  productId: string;
+  supplier: string;
+  unitPrice: number;
+  sellingPrice: number;
+  packSize: string;
+  reorderPoint: number;
+  isActive: boolean;
+}
+
+interface AdjustInventoryProductStockInput {
+  productId: string;
+  reason: Exclude<
+    MerchantInventoryMovementReason,
+    "sale" | "order-received" | "stock_initial"
+  >;
+  quantity?: number;
+  countedStock?: number;
+  note?: string;
+}
+
 interface QuickAddProductInput {
   name: string;
   category: string;
@@ -106,6 +142,7 @@ interface SalesLowStockInsight {
 interface MerchantDataContextValue {
   state: MerchantState;
   inventory: InventoryProduct[];
+  inventoryMovements: MerchantInventoryMovement[];
   orders: MerchantOrder[];
   activeOrders: MerchantOrder[];
   lowStockProducts: InventoryProduct[];
@@ -117,6 +154,18 @@ interface MerchantDataContextValue {
   lastOrder: MerchantOrder | null;
   lastSuccessfulOrder: MerchantOrder | null;
   createOrders: (input: CreateOrdersInput) => Promise<MerchantOrder[]>;
+  createInventoryProduct: (
+    input: CreateInventoryProductInput
+  ) => Promise<MerchantProduct>;
+  updateInventoryProduct: (
+    input: UpdateInventoryProductInput
+  ) => Promise<MerchantProduct>;
+  adjustInventoryProductStock: (
+    input: AdjustInventoryProductStockInput
+  ) => Promise<{
+    product: MerchantProduct;
+    movement: MerchantInventoryMovement;
+  }>;
   launchDraftOrder: (input: LaunchDraftOrderInput) => Promise<MerchantOrder | null>;
   syncDraftOrder: (input: SyncDraftOrderInput) => Promise<void>;
   updateDeliveryStatus: (
@@ -219,8 +268,8 @@ function buildDraftActivity(
       id: `activity-${order.id}-draft`,
       type: "order",
       tone: "warning",
-      title: "Ancien panier recharge",
-      detail: `${order.reference} de ${order.supplierName} est revenu dans votre brouillon. Verifiez les articles avant l'envoi.`,
+      title: "Panier relancé dans le brouillon",
+      detail: `${order.reference} de ${order.supplierName} est revenu dans votre brouillon. Vérifiez les articles avant l'envoi.`,
       createdAt: order.createdAt,
     };
   }
@@ -230,8 +279,8 @@ function buildDraftActivity(
       id: `activity-${order.id}-draft`,
       type: "order",
       tone: "warning",
-      title: "Produit ajoute au panier de reappro",
-      detail: `${productName ?? order.items[0]?.name ?? "Produit"} est dans ${order.reference} chez ${order.supplierName}. A confirmer avant la rupture.`,
+      title: "Produit ajouté au brouillon de réappro",
+      detail: `${productName ?? order.items[0]?.name ?? "Produit"} est dans ${order.reference} chez ${order.supplierName}. À confirmer avant la rupture.`,
       createdAt: order.createdAt,
     };
   }
@@ -241,8 +290,8 @@ function buildDraftActivity(
       id: `activity-${order.id}-draft`,
       type: "order",
       tone: "warning",
-      title: "Panier de reappro prepare",
-      detail: `${productName ?? order.items[0]?.name ?? "Produit"} est ajoute dans ${order.reference} chez ${order.supplierName}. Controlez puis envoyez.`,
+      title: "Brouillon de réappro préparé",
+      detail: `${productName ?? order.items[0]?.name ?? "Produit"} est ajouté dans ${order.reference} chez ${order.supplierName}. Contrôlez puis envoyez.`,
       createdAt: order.createdAt,
     };
   }
@@ -251,8 +300,8 @@ function buildDraftActivity(
     id: `activity-${order.id}-draft`,
     type: "order",
     tone: "warning",
-    title: "Panier recharge dans le brouillon",
-    detail: `${order.reference} chez ${order.supplierName} est pret pour verification. Ajustez les quantites avant l'envoi.`,
+    title: "Panier relancé dans le brouillon",
+    detail: `${order.reference} chez ${order.supplierName} est prêt à être vérifié. Ajustez les quantités avant l'envoi.`,
     createdAt: order.createdAt,
   };
 }
@@ -282,7 +331,7 @@ function getDraftSupplierName(
   }
 
   if (supplierNames.length > 1) {
-    return `${supplierNames.length} suppliers`;
+    return `${supplierNames.length} fournisseurs`;
   }
 
   return fallbackSupplierName;
@@ -319,11 +368,11 @@ function buildCreatedOrderActivity(
     type: "order",
     tone: "success",
     title: confirmedDraft
-      ? "Commande envoyee au fournisseur"
-      : "Commande creee",
+      ? "Commande envoyée au fournisseur"
+      : "Commande créée",
     detail: confirmedDraft
-      ? `${order.reference} chez ${order.supplierName} a ete envoyee pour ${formatCdf(order.totalAmount)}. En attente de confirmation fournisseur.`
-      : `${order.reference} a ete creee chez ${order.supplierName} pour ${formatCdf(order.totalAmount)}. En attente de confirmation fournisseur.`,
+      ? `${order.reference} chez ${order.supplierName} a été envoyée pour ${formatCdf(order.totalAmount)}. En attente de confirmation fournisseur.`
+      : `${order.reference} a été créée chez ${order.supplierName} pour ${formatCdf(order.totalAmount)}. En attente de confirmation fournisseur.`,
     createdAt: order.createdAt,
   };
 }
@@ -334,12 +383,12 @@ function buildDraftUpdatedActivity(
 ): MerchantActivity {
   const title =
     order.sourceDetail === "saved-basket-reload"
-      ? "Panier de reappro mis a jour"
-      : "Brouillon mis a jour";
+      ? "Brouillon relancé mis à jour"
+      : "Brouillon mis à jour";
   const detail =
     order.items.length === 0
       ? `${order.reference} est maintenant vide. Ajoutez des produits avant l'envoi au fournisseur.`
-      : `${order.reference} chez ${order.supplierName} contient ${order.items.length} ligne${order.items.length === 1 ? "" : "s"} pour ${formatCdf(order.totalAmount)}. Encore a verifier avant l'envoi.`;
+      : `${order.reference} chez ${order.supplierName} contient ${order.items.length} ligne${order.items.length === 1 ? "" : "s"} pour ${formatCdf(order.totalAmount)}. Encore à vérifier avant l'envoi.`;
 
   return {
     id: `activity-${order.id}-draft-update`,
@@ -361,7 +410,7 @@ function buildDeliveryStatusActivity(
       type: "delivery",
       tone: "accent",
       title: "Livraison en route",
-      detail: `${order.reference} chez ${order.supplierName} est maintenant en route. Arrivee attendue vers ${order.deliveryDate}.`,
+      detail: `${order.reference} chez ${order.supplierName} est maintenant en route. Arrivée prévue vers ${order.deliveryDate}.`,
       createdAt: new Date().toISOString(),
     };
   }
@@ -370,8 +419,8 @@ function buildDeliveryStatusActivity(
     id: `activity-${order.id}-delivery-received`,
     type: "delivery",
     tone: "success",
-    title: "Stock recu au magasin",
-    detail: `${order.reference} chez ${order.supplierName} a ete recu pour ${formatCdf(order.totalAmount)}.`,
+    title: "Stock reçu au magasin",
+    detail: `${order.reference} chez ${order.supplierName} a été reçu pour ${formatCdf(order.totalAmount)}.`,
     createdAt: new Date().toISOString(),
   };
 }
@@ -386,9 +435,9 @@ function buildRecordedSaleActivity(
     type: "sale",
     tone: "accent",
     title: quickAddedProduct
-      ? "Produit ajoute puis vendu"
-      : "Vente enregistree",
-    detail: `${sale.productName} x${sale.quantity} pour ${formatCdf(sale.totalAmount)} via ${paymentMethod}. Il reste ${sale.stockAfterSale} en rayon.`,
+      ? "Produit ajouté puis vendu"
+      : "Vente enregistrée",
+    detail: `${sale.productName} x${sale.quantity} pour ${formatCdf(sale.totalAmount)} via ${getMerchantPaymentMethodLabel(paymentMethod)}. Il reste ${sale.stockAfterSale} en rayon.`,
     createdAt: sale.soldAt,
   };
 }
@@ -403,12 +452,12 @@ function buildLowStockSaleActivity(
     tone: "warning",
     title:
       stockStatus === "Out of Stock"
-        ? "Rayon vide apres la vente"
-        : "Stock a surveiller",
+        ? "Rayon vide après la vente"
+        : "Stock à surveiller",
     detail:
       stockStatus === "Out of Stock"
-        ? `${sale.productName} est tombe a zero apres la derniere vente. Lancez un reappro avant le prochain rush.`
-        : `${sale.productName} n'a plus que ${sale.stockAfterSale} unite${sale.stockAfterSale === 1 ? "" : "s"} apres la derniere vente. Reappro a prevoir bientot.`,
+        ? `${sale.productName} est tombé à zéro après la dernière vente. Lancez un réappro avant le prochain rush.`
+        : `${sale.productName} n'a plus que ${sale.stockAfterSale} unité${sale.stockAfterSale === 1 ? "" : "s"} après la dernière vente. Réappro à prévoir bientôt.`,
     createdAt: sale.soldAt,
   };
 }
@@ -421,8 +470,8 @@ function buildVoidedSaleActivity(
     id: `activity-${sale.id}-voided`,
     type: "sale",
     tone: "warning",
-    title: "Derniere vente annulee",
-    detail: `${sale.productName} x${sale.quantity} retire de l'historique. Stock remis a ${stockAfterVoid} unite${stockAfterVoid === 1 ? "" : "s"}.`,
+    title: "Dernière vente annulée",
+    detail: `${sale.productName} x${sale.quantity} retiré de l'historique. Stock remis à ${stockAfterVoid} unité${stockAfterVoid === 1 ? "" : "s"}.`,
     createdAt: new Date().toISOString(),
   };
 }
@@ -443,17 +492,116 @@ function buildQuickAddProduct(
     sku: `KIN-RTL-${slugifyFragment(name).toUpperCase() || "ITEM"}`,
     name,
     category,
-    supplier: `Marche de ${profile.neighborhood} Supply`,
+    supplier: `Marché de ${profile.neighborhood}`,
     neighborhood: profile.neighborhood,
     unitPrice: estimateCostFromSellingPrice(input.sellingPrice),
     sellingPrice: input.sellingPrice,
-    packSize: "1 unit",
-    minOrder: "1 unit",
+    packSize: "1 unité",
+    minOrder: "1 unité",
     stockOnHand: startingStock,
     reorderPoint,
     reorderQuantity: Math.max(4, reorderPoint * 2),
     leadTimeDays: 1,
     lastRestockedAt: soldAt,
+    isActive: true,
+  };
+}
+
+function buildInventorySku(
+  name: string,
+  existingProducts: MerchantProduct[]
+): string {
+  const normalizedBase = slugifyFragment(name).toUpperCase() || "ITEM";
+  const baseSku = `KIN-INV-${normalizedBase}`;
+  const existingSkus = new Set(existingProducts.map((product) => product.sku));
+
+  if (!existingSkus.has(baseSku)) {
+    return baseSku;
+  }
+
+  let suffix = 2;
+  while (existingSkus.has(`${baseSku}-${suffix}`)) {
+    suffix += 1;
+  }
+
+  return `${baseSku}-${suffix}`;
+}
+
+function buildMinimumOrderLabel(packSize: string): string {
+  const normalizedPackSize = packSize.trim();
+  if (!normalizedPackSize) {
+    return "1 unité";
+  }
+
+  if (/^1\s/i.test(normalizedPackSize)) {
+    return normalizedPackSize;
+  }
+
+  return `1 ${normalizedPackSize}`;
+}
+
+function buildSaleMovement(sale: MerchantSale): MerchantInventoryMovement {
+  return {
+    id: `movement-${sale.id}`,
+    productId: sale.productId,
+    productName: sale.productName,
+    reason: "sale",
+    quantityChange: -sale.quantity,
+    stockAfter: sale.stockAfterSale,
+    createdAt: sale.soldAt,
+  };
+}
+
+function buildReceivedOrderMovements(
+  order: MerchantOrder,
+  updatedProducts: MerchantProduct[],
+  createdAt: string
+): MerchantInventoryMovement[] {
+  return order.items.reduce<MerchantInventoryMovement[]>((movements, item) => {
+    const updatedProduct = updatedProducts.find(
+      (product) => product.id === item.productId
+    );
+
+    if (!updatedProduct) {
+      return movements;
+    }
+
+    movements.push({
+      id: `movement-${order.id}-${item.productId}-received`,
+      productId: item.productId,
+      productName: item.name,
+      reason: "order-received",
+      quantityChange: item.quantity,
+      stockAfter: updatedProduct.stockOnHand,
+      note: `${order.reference} reçu de ${order.supplierName}.`,
+      createdAt,
+    });
+
+    return movements;
+  }, []);
+}
+
+function buildManualInventoryMovement(input: {
+  productId: string;
+  productName: string;
+  reason: Exclude<
+    MerchantInventoryMovementReason,
+    "sale" | "order-received"
+  >;
+  quantityChange: number;
+  stockAfter: number;
+  note?: string;
+  createdAt: string;
+}): MerchantInventoryMovement {
+  return {
+    id: crypto.randomUUID(),
+    productId: input.productId,
+    productName: input.productName,
+    reason: input.reason,
+    quantityChange: input.quantityChange,
+    stockAfter: input.stockAfter,
+    note: input.note?.trim() || undefined,
+    createdAt: input.createdAt,
   };
 }
 
@@ -498,6 +646,10 @@ export function MerchantDataProvider({
     }
   );
   const activeOrders = orders.filter((order) => isActiveOrder(order.status));
+  const inventoryMovements = [...state.inventoryMovements].sort(
+    (left, right) =>
+      new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+  );
   const sales = [...state.sales].sort(
     (left, right) =>
       new Date(right.soldAt).getTime() - new Date(left.soldAt).getTime()
@@ -524,7 +676,7 @@ export function MerchantDataProvider({
     .sort((left, right) => right.unitsSold - left.unitsSold)
     .slice(0, 3);
   const lowStockProducts = inventory.filter(
-    (product) => product.stockStatus !== "Healthy"
+    (product) => product.isActive && product.stockStatus !== "Healthy"
   );
   const salesLowStockInsights = sales
     .filter((sale) => sale.triggeredLowStock)
@@ -570,7 +722,7 @@ export function MerchantDataProvider({
         );
 
       if (error) {
-        throw new Error(`Unable to save merchant activity: ${error.message}`);
+        throw new Error(`Impossible d'enregistrer l'activité de la boutique : ${error.message}`);
       }
     },
     [merchantId, supabase]
@@ -587,7 +739,7 @@ export function MerchantDataProvider({
         .in("id", activityIds);
 
       if (error) {
-        throw new Error(`Unable to remove merchant activity: ${error.message}`);
+        throw new Error(`Impossible de supprimer l'activité : ${error.message}`);
       }
     },
     [merchantId, supabase]
@@ -604,7 +756,48 @@ export function MerchantDataProvider({
         });
 
       if (error) {
-        throw new Error(`Unable to save inventory changes: ${error.message}`);
+        throw new Error(`Impossible d'enregistrer les changements de stock : ${error.message}`);
+      }
+    },
+    [merchantId, supabase]
+  );
+
+  const upsertInventoryMovements = useCallback(
+    async (movements: MerchantInventoryMovement[]) => {
+      if (movements.length === 0) return;
+
+      const { error } = await supabase
+        .from("inventory_movements")
+        .upsert(
+          movements.map((movement) => toInventoryMovementRow(merchantId, movement)),
+          {
+            onConflict: "id",
+          }
+        );
+
+      if (error) {
+        throw new Error(
+          `Impossible d'enregistrer les mouvements de stock : ${error.message}`
+        );
+      }
+    },
+    [merchantId, supabase]
+  );
+
+  const deleteInventoryMovements = useCallback(
+    async (movementIds: string[]) => {
+      if (movementIds.length === 0) return;
+
+      const { error } = await supabase
+        .from("inventory_movements")
+        .delete()
+        .eq("merchant_id", merchantId)
+        .in("id", movementIds);
+
+      if (error) {
+        throw new Error(
+          `Impossible de supprimer les mouvements de stock : ${error.message}`
+        );
       }
     },
     [merchantId, supabase]
@@ -622,7 +815,7 @@ export function MerchantDataProvider({
       );
 
       if (error) {
-        throw new Error(`Unable to save supplier orders: ${error.message}`);
+        throw new Error(`Impossible d'enregistrer les commandes fournisseur : ${error.message}`);
       }
     },
     [merchantId, supabase]
@@ -637,7 +830,7 @@ export function MerchantDataProvider({
         .eq("supplier_order_id", orderId);
 
       if (deleteError) {
-        throw new Error(`Unable to replace order lines: ${deleteError.message}`);
+        throw new Error(`Impossible de remplacer les lignes de commande : ${deleteError.message}`);
       }
 
       if (items.length === 0) {
@@ -649,7 +842,7 @@ export function MerchantDataProvider({
         .insert(toSupplierOrderItemRows(merchantId, orderId, items));
 
       if (insertError) {
-        throw new Error(`Unable to save order lines: ${insertError.message}`);
+        throw new Error(`Impossible d'enregistrer les lignes de commande : ${insertError.message}`);
       }
     },
     [merchantId, supabase]
@@ -661,7 +854,7 @@ export function MerchantDataProvider({
 
   function buildDraftFromProduct(productId: string): CartItem[] {
     const product = state.products.find((entry) => entry.id === productId);
-    if (!product) return [];
+    if (!product || !product.isActive) return [];
     return [toCartItem(product, product.reorderQuantity)];
   }
 
@@ -680,11 +873,271 @@ export function MerchantDataProvider({
         name: item.name,
         supplier: item.supplier,
         unit_price: item.unitPrice,
-        min_order: item.packSize || "1 case",
+        min_order: item.packSize || "1 unité",
         quantity: item.quantity,
       };
     });
   }
+
+  const createInventoryProduct = useCallback(
+    async ({
+      name,
+      category,
+      supplier,
+      unitPrice,
+      sellingPrice,
+      packSize,
+      reorderPoint,
+      startingStock,
+    }: CreateInventoryProductInput): Promise<MerchantProduct> => {
+      const trimmedName = name.trim();
+      const trimmedCategory = category.trim();
+      const trimmedSupplier = supplier.trim();
+      const trimmedPackSize = packSize.trim();
+
+      if (!trimmedName) {
+        throw new Error("Saisissez un nom de produit.");
+      }
+
+      if (!trimmedCategory) {
+        throw new Error("Choisissez une catégorie.");
+      }
+
+      if (!trimmedSupplier) {
+        throw new Error("Saisissez un fournisseur principal.");
+      }
+
+      if (!trimmedPackSize) {
+        throw new Error("Saisissez une unité ou un conditionnement.");
+      }
+
+      if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+        throw new Error("Saisissez un prix d'achat valide.");
+      }
+
+      if (!Number.isFinite(sellingPrice) || sellingPrice <= 0) {
+        throw new Error("Saisissez un prix de vente valide.");
+      }
+
+      if (!Number.isFinite(reorderPoint) || reorderPoint < 0) {
+        throw new Error("Saisissez un seuil de réappro valide.");
+      }
+
+      if (!Number.isFinite(startingStock) || startingStock < 0) {
+        throw new Error("Saisissez un stock initial valide.");
+      }
+
+      const currentState = stateRef.current;
+      const createdAt = new Date().toISOString();
+      const roundedReorderPoint = Math.round(reorderPoint);
+      const roundedStartingStock = Math.round(startingStock);
+      const product: MerchantProduct = {
+        id: `product-${crypto.randomUUID()}`,
+        sku: buildInventorySku(trimmedName, currentState.products),
+        name: trimmedName,
+        category: trimmedCategory,
+        supplier: trimmedSupplier,
+        neighborhood: currentState.profile.neighborhood,
+        unitPrice: Math.round(unitPrice),
+        sellingPrice: Math.round(sellingPrice),
+        packSize: trimmedPackSize,
+        minOrder: buildMinimumOrderLabel(trimmedPackSize),
+        stockOnHand: roundedStartingStock,
+        reorderPoint: roundedReorderPoint,
+        reorderQuantity: Math.max(4, roundedReorderPoint * 2 || 4),
+        leadTimeDays: 1,
+        lastRestockedAt: createdAt,
+        isActive: true,
+      };
+      const initialMovement =
+        roundedStartingStock > 0
+          ? buildManualInventoryMovement({
+              productId: product.id,
+              productName: product.name,
+              reason: "stock_initial",
+              quantityChange: roundedStartingStock,
+              stockAfter: roundedStartingStock,
+              note: "Stock initial saisi \u00e0 la cr\u00e9ation du produit.",
+              createdAt,
+            })
+          : null;
+
+      await upsertInventoryProducts([product]);
+      await upsertInventoryMovements(initialMovement ? [initialMovement] : []);
+
+      setState((current) => ({
+        ...current,
+        products: [product, ...current.products],
+        inventoryMovements: initialMovement
+          ? [initialMovement, ...current.inventoryMovements]
+          : current.inventoryMovements,
+      }));
+
+      return product;
+    },
+    [upsertInventoryMovements, upsertInventoryProducts]
+  );
+
+  const updateInventoryProduct = useCallback(
+    async ({
+      productId,
+      supplier,
+      unitPrice,
+      sellingPrice,
+      packSize,
+      reorderPoint,
+      isActive,
+    }: UpdateInventoryProductInput): Promise<MerchantProduct> => {
+      const currentState = stateRef.current;
+      const currentProduct =
+        currentState.products.find((product) => product.id === productId) ?? null;
+
+      if (!currentProduct) {
+        throw new Error("Produit introuvable.");
+      }
+
+      const trimmedSupplier = supplier.trim();
+      const trimmedPackSize = packSize.trim();
+
+      if (!trimmedSupplier) {
+        throw new Error("Saisissez un fournisseur principal.");
+      }
+
+      if (!trimmedPackSize) {
+        throw new Error("Saisissez une unité ou un conditionnement.");
+      }
+
+      if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+        throw new Error("Saisissez un prix d'achat valide.");
+      }
+
+      if (!Number.isFinite(sellingPrice) || sellingPrice <= 0) {
+        throw new Error("Saisissez un prix de vente valide.");
+      }
+
+      if (!Number.isFinite(reorderPoint) || reorderPoint < 0) {
+        throw new Error("Saisissez un seuil de réappro valide.");
+      }
+
+      const nextProduct: MerchantProduct = {
+        ...currentProduct,
+        supplier: trimmedSupplier,
+        unitPrice: Math.round(unitPrice),
+        sellingPrice: Math.round(sellingPrice),
+        packSize: trimmedPackSize,
+        minOrder: buildMinimumOrderLabel(trimmedPackSize),
+        reorderPoint: Math.round(reorderPoint),
+        reorderQuantity: Math.max(4, Math.round(reorderPoint) * 2 || 4),
+        isActive,
+      };
+
+      await upsertInventoryProducts([nextProduct]);
+
+      setState((current) => ({
+        ...current,
+        products: current.products.map((product) =>
+          product.id === nextProduct.id ? nextProduct : product
+        ),
+      }));
+
+      return nextProduct;
+    },
+    [upsertInventoryProducts]
+  );
+
+  const adjustInventoryProductStock = useCallback(
+    async ({
+      productId,
+      reason,
+      quantity,
+      countedStock,
+      note,
+    }: AdjustInventoryProductStockInput): Promise<{
+      product: MerchantProduct;
+      movement: MerchantInventoryMovement;
+    }> => {
+      const currentState = stateRef.current;
+      const currentProduct =
+        currentState.products.find((product) => product.id === productId) ?? null;
+
+      if (!currentProduct) {
+        throw new Error("Choisissez un produit à ajuster.");
+      }
+
+      if (
+        reason !== "inventory-correction" &&
+        (!Number.isFinite(quantity) || quantity == null || quantity <= 0)
+      ) {
+        throw new Error("Saisissez une quantité d'ajustement valide.");
+      }
+
+      const roundedQuantity =
+        reason === "inventory-correction"
+          ? Math.round(countedStock ?? currentProduct.stockOnHand)
+          : Math.round(quantity ?? 0);
+      const quantityChange =
+        reason === "inventory-correction"
+          ? roundedQuantity - currentProduct.stockOnHand
+          : reason === "manual-entry"
+            ? roundedQuantity
+            : -roundedQuantity;
+      const nextStockOnHand =
+        reason === "inventory-correction"
+          ? roundedQuantity
+          : currentProduct.stockOnHand + quantityChange;
+
+      if (
+        reason === "inventory-correction" &&
+        (!Number.isFinite(countedStock) || countedStock == null || countedStock < 0)
+      ) {
+        throw new Error("Saisissez un stock compt\u00e9 valide.");
+      }
+
+      if (reason === "inventory-correction" && quantityChange === 0) {
+        throw new Error("Le stock comptÃ© correspond dÃ©jÃ  au stock actuel.");
+      }
+
+      if (nextStockOnHand < 0) {
+        throw new Error(
+          `${currentProduct.name} n'a pas assez de stock pour cet ajustement.`
+        );
+      }
+
+      const createdAt = new Date().toISOString();
+      const nextProduct: MerchantProduct = {
+        ...currentProduct,
+        stockOnHand: nextStockOnHand,
+        lastRestockedAt:
+          quantityChange > 0 ? createdAt : currentProduct.lastRestockedAt,
+      };
+      const movement = buildManualInventoryMovement({
+        productId: currentProduct.id,
+        productName: currentProduct.name,
+        reason,
+        quantityChange,
+        stockAfter: nextStockOnHand,
+        note,
+        createdAt,
+      });
+
+      await upsertInventoryProducts([nextProduct]);
+      await upsertInventoryMovements([movement]);
+
+      setState((current) => ({
+        ...current,
+        products: current.products.map((product) =>
+          product.id === nextProduct.id ? nextProduct : product
+        ),
+        inventoryMovements: [movement, ...current.inventoryMovements],
+      }));
+
+      return {
+        product: nextProduct,
+        movement,
+      };
+    },
+    [upsertInventoryMovements, upsertInventoryProducts]
+  );
 
   const recordSale = useCallback(
     async ({
@@ -696,15 +1149,15 @@ export function MerchantDataProvider({
       quickAddProduct,
     }: RecordSaleInput): Promise<MerchantSale> => {
       if (!Number.isFinite(quantity) || quantity <= 0) {
-        throw new Error("Quantity must be at least 1.");
+        throw new Error("La quantité doit être au moins de 1.");
       }
 
       if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
-        throw new Error("Enter a valid selling price in CDF.");
+        throw new Error("Saisissez un prix de vente valide en CDF.");
       }
 
       if (!soldAt || Number.isNaN(new Date(soldAt).getTime())) {
-        throw new Error("Choose a valid sale time.");
+        throw new Error("Choisissez une heure de vente valide.");
       }
 
       const currentState = stateRef.current;
@@ -716,29 +1169,29 @@ export function MerchantDataProvider({
 
       if (!product) {
         if (!quickAddProduct) {
-          throw new Error("Select a product or quick-add a new one first.");
+          throw new Error("Choisissez un produit ou ajoutez d'abord un nouvel article.");
         }
 
         if (!quickAddProduct.name.trim()) {
-          throw new Error("Enter a product name for the new item.");
+          throw new Error("Saisissez un nom de produit pour le nouvel article.");
         }
 
         if (!quickAddProduct.category.trim()) {
-          throw new Error("Choose a category for the new item.");
+          throw new Error("Choisissez une catégorie pour le nouvel article.");
         }
 
         if (
           !Number.isFinite(quickAddProduct.sellingPrice) ||
           quickAddProduct.sellingPrice <= 0
         ) {
-          throw new Error("Enter a valid selling price for the new item.");
+          throw new Error("Saisissez un prix de vente valide pour le nouvel article.");
         }
 
         if (
           quickAddProduct.startingStock != null &&
           quickAddProduct.startingStock < quantity
         ) {
-          throw new Error("Starting stock must cover the quantity being sold.");
+          throw new Error("Le stock de départ doit couvrir la quantité vendue.");
         }
 
         product = buildQuickAddProduct(
@@ -750,9 +1203,15 @@ export function MerchantDataProvider({
         quickAdded = true;
       }
 
+      if (!product.isActive) {
+        throw new Error(
+          `${product.name} est inactif. R\u00e9activez-le avant d'enregistrer une vente.`
+        );
+      }
+
       if (product.stockOnHand < quantity) {
         throw new Error(
-          `${product.name} n'a que ${product.stockOnHand} unite${product.stockOnHand === 1 ? "" : "s"} en stock. Reduisez la quantite ou reapprovisionnez d'abord.`
+          `${product.name} n'a que ${product.stockOnHand} unité${product.stockOnHand === 1 ? "" : "s"} en stock. Réduisez la quantité ou réapprovisionnez d'abord.`
         );
       }
 
@@ -792,6 +1251,7 @@ export function MerchantDataProvider({
         paymentMethod,
         quickAdded
       );
+      const saleMovement = buildSaleMovement(sale);
       const lowStockActivity = sale.triggeredLowStock
         ? buildLowStockSaleActivity(sale, nextStatus)
         : null;
@@ -803,9 +1263,10 @@ export function MerchantDataProvider({
         .insert(toSaleRow(merchantId, sale));
 
       if (saleError) {
-        throw new Error(`Unable to save the sale: ${saleError.message}`);
+        throw new Error(`Impossible d'enregistrer la vente : ${saleError.message}`);
       }
 
+      await upsertInventoryMovements([saleMovement]);
       await upsertActivities(
         lowStockActivity ? [saleActivity, lowStockActivity] : [saleActivity]
       );
@@ -814,6 +1275,7 @@ export function MerchantDataProvider({
         ...current,
         products: nextProducts,
         sales: [sale, ...current.sales],
+        inventoryMovements: [saleMovement, ...current.inventoryMovements],
         activities: lowStockActivity
           ? [lowStockActivity, saleActivity, ...current.activities].slice(0, 20)
           : [saleActivity, ...current.activities].slice(0, 20),
@@ -821,7 +1283,13 @@ export function MerchantDataProvider({
 
       return sale;
     },
-    [merchantId, supabase, upsertActivities, upsertInventoryProducts]
+    [
+      merchantId,
+      supabase,
+      upsertActivities,
+      upsertInventoryMovements,
+      upsertInventoryProducts,
+    ]
   );
 
   const voidLatestSale = useCallback(async (): Promise<MerchantSale | null> => {
@@ -860,13 +1328,14 @@ export function MerchantDataProvider({
       .eq("id", latestSale.id);
 
     if (deleteSaleError) {
-      throw new Error(`Unable to remove the sale: ${deleteSaleError.message}`);
+      throw new Error(`Impossible d'annuler cette vente : ${deleteSaleError.message}`);
     }
 
     await deleteActivities([
       `activity-${latestSale.id}-recorded`,
       `activity-${latestSale.id}-low-stock`,
     ]);
+    await deleteInventoryMovements([`movement-${latestSale.id}`]);
     await upsertActivities([voidedActivity]);
 
     setState((current) => ({
@@ -875,6 +1344,9 @@ export function MerchantDataProvider({
         entry.id === updatedProduct.id ? updatedProduct : entry
       ),
       sales: current.sales.filter((sale) => sale.id !== latestSale.id),
+      inventoryMovements: current.inventoryMovements.filter(
+        (movement) => movement.id !== `movement-${latestSale.id}`
+      ),
       activities: [
         voidedActivity,
         ...current.activities.filter(
@@ -888,6 +1360,7 @@ export function MerchantDataProvider({
     return latestSale;
   }, [
     deleteActivities,
+    deleteInventoryMovements,
     merchantId,
     supabase,
     upsertActivities,
@@ -918,7 +1391,7 @@ export function MerchantDataProvider({
         createdAt,
         orderDate: formatShortDate(createdAt),
         deliveryDate: formatShortDate(etaAt),
-        deliveryAddress: "Delivery details pending",
+        deliveryAddress: "",
         items: lineItems,
         totalAmount: lineItems.reduce(
           (runningTotal, item) => runningTotal + item.quantity * item.unitPrice,
@@ -1040,6 +1513,7 @@ export function MerchantDataProvider({
         ...currentOrder,
         status: nextStatus === "Delivered" ? "Delivered" : "In Transit",
       };
+      const statusUpdatedAt = new Date().toISOString();
       const nextProducts =
         nextStatus === "Delivered"
           ? currentState.products.map((product) => {
@@ -1054,7 +1528,7 @@ export function MerchantDataProvider({
               return {
                 ...product,
                 stockOnHand: product.stockOnHand + matchingItem.quantity,
-                lastRestockedAt: new Date().toISOString(),
+                lastRestockedAt: statusUpdatedAt,
               };
             })
           : currentState.products;
@@ -1076,11 +1550,16 @@ export function MerchantDataProvider({
         )
       );
       const activity = buildDeliveryStatusActivity(nextOrder, nextStatus);
+      const receiptMovements =
+        nextStatus === "Delivered"
+          ? buildReceivedOrderMovements(currentOrder, updatedProducts, statusUpdatedAt)
+          : [];
 
       await upsertOrders([{ order: nextOrder, etaAt }]);
 
       if (nextStatus === "Delivered") {
         await upsertInventoryProducts(updatedProducts);
+        await upsertInventoryMovements(receiptMovements);
       }
 
       const { error: deliveryError } = await supabase
@@ -1090,7 +1569,7 @@ export function MerchantDataProvider({
         );
 
       if (deliveryError) {
-        throw new Error(`Unable to save delivery update: ${deliveryError.message}`);
+        throw new Error(`Impossible d'enregistrer l'étape de livraison : ${deliveryError.message}`);
       }
 
       await upsertActivities([activity]);
@@ -1098,6 +1577,10 @@ export function MerchantDataProvider({
       setState((current) => ({
         ...current,
         products: nextStatus === "Delivered" ? nextProducts : current.products,
+        inventoryMovements:
+          nextStatus === "Delivered"
+            ? [...receiptMovements, ...current.inventoryMovements]
+            : current.inventoryMovements,
         orders: current.orders.map((order) =>
           order.id === orderId ? nextOrder : order
         ),
@@ -1106,7 +1589,14 @@ export function MerchantDataProvider({
 
       return nextOrder;
     },
-    [merchantId, supabase, upsertActivities, upsertInventoryProducts, upsertOrders]
+    [
+      merchantId,
+      supabase,
+      upsertActivities,
+      upsertInventoryMovements,
+      upsertInventoryProducts,
+      upsertOrders,
+    ]
   );
 
   const createOrders = useCallback(
@@ -1232,6 +1722,7 @@ export function MerchantDataProvider({
       value={{
         state,
         inventory,
+        inventoryMovements,
         orders,
         activeOrders,
         lowStockProducts,
@@ -1243,6 +1734,9 @@ export function MerchantDataProvider({
         lastOrder,
         lastSuccessfulOrder,
         createOrders,
+        createInventoryProduct,
+        updateInventoryProduct,
+        adjustInventoryProductStock,
         launchDraftOrder,
         syncDraftOrder,
         updateDeliveryStatus,

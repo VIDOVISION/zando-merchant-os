@@ -43,7 +43,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 
 const NAV_ITEMS: { label: string; href: string; icon: ReactNode }[] = [
   {
-    label: "Home",
+    label: "Accueil",
     href: "/home",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -52,7 +52,7 @@ const NAV_ITEMS: { label: string; href: string; icon: ReactNode }[] = [
     ),
   },
   {
-    label: "Orders",
+    label: "Commandes",
     href: "/orders",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -61,7 +61,7 @@ const NAV_ITEMS: { label: string; href: string; icon: ReactNode }[] = [
     ),
   },
   {
-    label: "Inventory",
+    label: "Stock",
     href: "/inventory",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -70,7 +70,7 @@ const NAV_ITEMS: { label: string; href: string; icon: ReactNode }[] = [
     ),
   },
   {
-    label: "Sales",
+    label: "Ventes",
     href: "/sales",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -79,7 +79,7 @@ const NAV_ITEMS: { label: string; href: string; icon: ReactNode }[] = [
     ),
   },
   {
-    label: "Deliveries",
+    label: "Livraisons",
     href: "/deliveries",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -88,7 +88,7 @@ const NAV_ITEMS: { label: string; href: string; icon: ReactNode }[] = [
     ),
   },
   {
-    label: "Payments",
+    label: "Paiements",
     href: "/wallet",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -97,7 +97,7 @@ const NAV_ITEMS: { label: string; href: string; icon: ReactNode }[] = [
     ),
   },
   {
-    label: "Settings",
+    label: "Paramètres",
     href: "/settings",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -138,19 +138,19 @@ export default function Sidebar() {
             <span className="font-heading text-sm font-bold tracking-tight text-primary truncate">Zando</span>
           )}
         </Link>
-        <button onClick={toggleCollapsed} className="hidden lg:flex items-center justify-center w-6 h-6 rounded-md text-muted hover:text-secondary hover:bg-sidebar-hover transition-colors" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+        <button onClick={toggleCollapsed} className="hidden lg:flex items-center justify-center w-6 h-6 rounded-md text-muted hover:text-secondary hover:bg-sidebar-hover transition-colors" aria-label={collapsed ? "Déplier la barre latérale" : "Replier la barre latérale"}>
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             {collapsed ? <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /> : <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />}
           </svg>
         </button>
-        <button onClick={closeMobile} className="lg:hidden flex items-center justify-center w-6 h-6 rounded-md text-muted hover:text-secondary hover:bg-sidebar-hover transition-colors" aria-label="Close sidebar">
+        <button onClick={closeMobile} className="lg:hidden flex items-center justify-center w-6 h-6 rounded-md text-muted hover:text-secondary hover:bg-sidebar-hover transition-colors" aria-label="Fermer la barre latérale">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
-      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto" aria-label="Main navigation">
+      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto" aria-label="Navigation principale">
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.href);
           return (
@@ -170,12 +170,12 @@ export default function Sidebar() {
       <div className="px-2 py-3 border-t border-sidebar-border">
         <button onClick={handleSignOut}
           className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-secondary hover:text-primary hover:bg-sidebar-hover transition-colors w-full ${collapsed ? "justify-center px-2" : ""}`}
-          title={collapsed ? "Sign out" : undefined}
+          title={collapsed ? "Déconnexion" : undefined}
         >
           <svg className="w-5 h-5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
           </svg>
-          {!collapsed && <span>Sign out</span>}
+          {!collapsed && <span>Déconnexion</span>}
         </button>
       </div>
     </div>

@@ -27,22 +27,22 @@ function getBasketStateCopy(order: MerchantOrder): {
 } {
   return {
     label: isEditableMerchantOrder(order.status)
-      ? "Brouillon enregistré, encore modifiable"
+      ? "Brouillon en cours"
       : getOrdersDrawerStatusLabel(order),
     detail:
       isEditableMerchantOrder(order.status)
-        ? "Ce panier est enregistré, pas encore envoyé, et peut encore être modifié avant confirmation."
+        ? "Ce brouillon est enregistré, pas encore envoyé et peut encore être modifié avant confirmation."
         : getOrdersDrawerStatusDescription(order),
   };
 }
 
 function getOrdersDrawerStatusLabel(order: MerchantOrder): string {
   if (isEditableMerchantOrder(order.status)) {
-    return "Brouillon enregistré";
+    return "Brouillon";
   }
 
   if (isWaitingSupplierMerchantOrder(order.status)) {
-    return "En attente de confirmation fournisseur";
+    return "En attente fournisseur";
   }
 
   if (isOnTheWayMerchantOrder(order.status)) {
@@ -74,7 +74,7 @@ function getOrdersDrawerStatusDescription(order: MerchantOrder): string {
 
 function getOrdersDrawerSourceLabel(order: MerchantOrder): string {
   if (order.sourceDetail === "saved-basket-reload") {
-    return "Ancien panier";
+    return "Panier relancé";
   }
 
   if (order.sourceDetail === "inventory-restock") {
@@ -224,7 +224,7 @@ export default function OrderDetailsDrawer({
                         {item.name}
                       </p>
                       <p className="mt-1 text-xs text-muted">
-                        Qté {item.quantity} | Unité {formatCdf(item.unitPrice)} |{" "}
+                        Qté {item.quantity} | Prix unitaire {formatCdf(item.unitPrice)} |{" "}
                         {item.packSize}
                       </p>
                     </div>
@@ -257,7 +257,7 @@ export default function OrderDetailsDrawer({
               onClick={() => onResumeDraft(order.id)}
               className="accent-gradient btn-shine w-full rounded-xl py-2.5 text-sm font-medium text-background"
             >
-              Continuer la modification
+              Continuer le brouillon
             </button>
           ) : null}
           {canReviewAndConfirm ? (

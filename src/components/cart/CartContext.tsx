@@ -27,31 +27,31 @@ export type CartDraftIntent =
   | "order-history-restock";
 
 export function getDraftIntentLabel(draftIntent: CartDraftIntent): string {
-  if (draftIntent === "repeat-saved-basket") return "Saved basket reload";
-  if (draftIntent === "low-stock-restock") return "Low-stock reorder";
-  if (draftIntent === "inventory-restock") return "Inventory restock";
-  if (draftIntent === "order-history-restock") return "Previous basket reload";
-  return "Manual new order";
+  if (draftIntent === "repeat-saved-basket") return "Panier relancé";
+  if (draftIntent === "low-stock-restock") return "Réappro stock bas";
+  if (draftIntent === "inventory-restock") return "Réappro stock";
+  if (draftIntent === "order-history-restock") return "Panier relancé";
+  return "Nouvelle commande";
 }
 
 export function getDraftIntentDescription(draftIntent: CartDraftIntent): string {
   if (draftIntent === "repeat-saved-basket") {
-    return "This basket was loaded from a previous supplier order so you can send it again after a quick check.";
+    return "Ce panier a été relancé depuis une ancienne commande fournisseur pour pouvoir être renvoyé après une vérification rapide.";
   }
 
   if (draftIntent === "low-stock-restock") {
-    return "This basket was loaded from a low-stock alert so you can refill the shelf before it goes empty.";
+    return "Ce panier a été préparé depuis une alerte de stock bas pour réapprovisionner avant la rupture.";
   }
 
   if (draftIntent === "inventory-restock") {
-    return "This basket was loaded from Inventory so you can top up stock directly from the shelf watchlist.";
+    return "Ce panier a été préparé depuis le stock pour lancer un réappro directement depuis la liste de surveillance.";
   }
 
   if (draftIntent === "order-history-restock") {
-    return "This basket was loaded from an earlier supplier order and is ready for editing before you send it.";
+    return "Ce panier a été relancé depuis une ancienne commande fournisseur et reste modifiable avant l'envoi.";
   }
 
-  return "You started a fresh supplier basket. Add or remove items before you review and confirm.";
+  return "Vous avez démarré un nouveau panier fournisseur. Ajoutez ou retirez des articles avant de vérifier et confirmer.";
 }
 
 interface CartContextValue {

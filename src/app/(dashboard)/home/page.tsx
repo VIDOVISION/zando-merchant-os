@@ -39,32 +39,32 @@ function getDraftIntentFromOrder(order: MerchantOrder): CartDraftIntent {
 
 function getActiveOrderCardHint(order: MerchantOrder): string {
   if (isEditableMerchantOrder(order.status)) {
-    return "Brouillon enregistre, encore modifiable";
+    return "Brouillon enregistré, encore modifiable";
   }
 
   if (order.status === "Pending") {
-    return "Commande envoyee, en attente du fournisseur";
+    return "Commande envoyée, en attente du fournisseur";
   }
 
-  return "Commande deja lancee, vous pouvez relancer le meme panier";
+  return "Commande déjà lancée, vous pouvez relancer le même panier";
 }
 
 function getHomeOrderStatusLabel(order: MerchantOrder): string {
   if (order.status === "Draft") return "Brouillon";
-  if (order.status === "Pending") return "Attente fournisseur";
-  if (order.status === "Confirmed") return "Confirmee";
-  if (order.status === "Packed") return "Preparee";
+  if (order.status === "Pending") return "En attente fournisseur";
+  if (order.status === "Confirmed") return "En route";
+  if (order.status === "Packed") return "En route";
   if (order.status === "In Transit") return "En route";
-  if (order.status === "Delivered") return "Recue";
-  return "Annulee";
+  if (order.status === "Delivered") return "Réceptionnée";
+  return "Annulée";
 }
 
 function getHomeOrderSourceLabel(order: MerchantOrder): string {
-  if (order.sourceDetail === "saved-basket-reload") return "Ancien panier";
-  if (order.sourceDetail === "inventory-restock") return "Reappro stock";
-  if (order.sourceDetail === "low-stock-reorder") return "Stock bas";
-  if (order.sourceDetail === "quick-reorder") return "Relance rapide";
-  return "Nouvelle commande";
+  if (order.sourceDetail === "saved-basket-reload") return "Panier relancé";
+  if (order.sourceDetail === "inventory-restock") return "Réappro stock";
+  if (order.sourceDetail === "low-stock-reorder") return "Réappro rapide";
+  if (order.sourceDetail === "quick-reorder") return "Réappro rapide";
+  return "Commande manuelle";
 }
 
 function getHomeStockStatusLabel(stockStatus: string): string {
@@ -80,19 +80,19 @@ function getHomeActivityLabel(
   }
 ): string {
   if (activity.type === "delivery" && activity.tone === "success") {
-    return "Livre";
+    return "Réception";
   }
 
   if (activity.type === "order" && activity.tone === "success") {
-    return "Envoyee";
+    return "Commande envoyée";
   }
 
   if (activity.type === "order" && activity.tone === "warning") {
-    return "A revoir";
+    return "À confirmer";
   }
 
   if (activity.type === "alert") {
-    return "A traiter";
+    return "À traiter";
   }
 
   if (activity.type === "sale") {
@@ -109,7 +109,7 @@ function formatHomeRelativeActivity(dateString: string): string {
   const diffMinutes = Math.max(0, Math.floor(diffMs / (1000 * 60)));
 
   if (diffMinutes < 1) {
-    return "A l'instant";
+    return "À l'instant";
   }
 
   if (diffMinutes < 60) {
@@ -193,7 +193,7 @@ export default function HomePage() {
       setActionError(
         error instanceof Error
           ? error.message
-          : "Impossible d'ouvrir ce brouillon de reappro."
+          : "Impossible d'ouvrir ce brouillon de réappro."
       );
     }
   }
@@ -307,9 +307,9 @@ export default function HomePage() {
             {state.profile.storeName} aujourd'hui
           </h1>
           <p className="mt-2 text-sm text-secondary">
-            Tout ce qui compte pour la boutique a {state.profile.neighborhood},{" "}
-            {state.profile.city} : stock a surveiller, commandes fournisseur,
-            ventes du jour et activite recente.
+            Tout ce qui compte pour la boutique à {state.profile.neighborhood},{" "}
+            {state.profile.city} : stock à surveiller, commandes fournisseur,
+            ventes du jour et activité récente.
           </p>
         </div>
 
@@ -329,7 +329,7 @@ export default function HomePage() {
             {lowStockProducts.length}
           </p>
           <p className="mt-1 text-xs text-secondary">
-            Rayons a reapprovisionner
+            Rayons à réapprovisionner
           </p>
         </div>
         <div className="glass-card rounded-2xl p-4">
@@ -347,7 +347,7 @@ export default function HomePage() {
             {formatCdf(salesTodayValue)}
           </p>
           <p className="mt-1 text-xs text-secondary">
-            {todaySales.length} vente{todaySales.length === 1 ? "" : "s"} enregistree{todaySales.length === 1 ? "" : "s"} aujourd'hui
+            {todaySales.length} vente{todaySales.length === 1 ? "" : "s"} enregistrée{todaySales.length === 1 ? "" : "s"} aujourd'hui
           </p>
         </div>
         <div className="glass-card rounded-2xl p-4">
@@ -360,7 +360,7 @@ export default function HomePage() {
           <p className="mt-1 text-xs text-secondary">
             {latestSavedBasketDraft
               ? "Montant du brouillon en cours"
-              : "Relancer vite le dernier panier confirme"}
+              : "Relancer vite le dernier panier confirmé"}
           </p>
         </div>
       </section>
@@ -390,7 +390,7 @@ export default function HomePage() {
                 >
                   {salesRiskByProductId.get(product.id) ? (
                     <div className="mb-3 inline-flex rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-300">
-                      Les ventes recentes ont fait baisser ce stock
+                      Les ventes récentes ont fait baisser ce stock
                     </div>
                   ) : null}
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -410,12 +410,12 @@ export default function HomePage() {
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-muted">
-                        {product.stockOnHand} en stock | reappro {product.reorderQuantity} |{" "}
+                        {product.stockOnHand} en stock | réappro {product.reorderQuantity} |{" "}
                         {product.supplier}
                       </p>
                       {salesRiskByProductId.get(product.id) ? (
                         <p className="mt-2 text-xs text-secondary">
-                          {salesRiskByProductId.get(product.id)?.quantitySold} vendu{salesRiskByProductId.get(product.id)?.quantitySold === 1 ? "" : "s"} recemment, il ne reste que{" "}
+                          {salesRiskByProductId.get(product.id)?.quantitySold} vendu{salesRiskByProductId.get(product.id)?.quantitySold === 1 ? "" : "s"} récemment, il ne reste que{" "}
                           {salesRiskByProductId.get(product.id)?.stockAfterSale}.
                         </p>
                       ) : null}
@@ -426,7 +426,7 @@ export default function HomePage() {
                       onClick={() => handleQuickReorderFromProduct(product.id)}
                       className="rounded-xl border border-accent/20 bg-accent/10 px-3 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
                     >
-                      Preparer reappro
+                      Préparer le réappro
                     </button>
                   </div>
                 </div>
@@ -477,9 +477,9 @@ export default function HomePage() {
                         {order.supplierName}
                       </p>
                       <p className="mt-1 text-xs text-muted">
-                        Arrivee prevue {order.deliveryDate} | {order.items.length} ligne
+                        Arrivée prévue {order.deliveryDate} | {order.items.length} ligne
                         {order.items.length === 1 ? "" : "s"} |{" "}
-                        {getMerchantOrderTotalUnits(order)} unite
+                        {getMerchantOrderTotalUnits(order)} unité
                         {getMerchantOrderTotalUnits(order) === 1 ? "" : "s"}
                       </p>
 
@@ -519,7 +519,7 @@ export default function HomePage() {
                               onClick={() => setSelectedOrder(order)}
                               className="rounded-xl border border-border px-3 py-2 text-xs font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary"
                             >
-                              Voir panier
+                              Voir le panier
                             </button>
                             <button
                               type="button"
@@ -536,14 +536,14 @@ export default function HomePage() {
                               onClick={() => handleReloadOrderBasket(order)}
                               className="rounded-xl border border-border px-3 py-2 text-xs font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary"
                             >
-                              Relancer panier
+                              Relancer le panier
                             </button>
                             <button
                               type="button"
                               onClick={() => setSelectedOrder(order)}
                               className="rounded-xl border border-accent/20 bg-accent/10 px-3 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
                             >
-                              Voir panier
+                              Voir le panier
                             </button>
                           </>
                         )}
@@ -555,11 +555,11 @@ export default function HomePage() {
 
               {activeOrders.length === 0 && (
                 <div className="rounded-2xl border border-dashed border-border px-4 py-8 text-center">
-                  <p className="text-sm text-primary">Aucune commande en cours aujourd'hui.</p>
-                  <p className="mt-1 text-xs text-muted">
-                    Lancez un nouveau panier fournisseur pour reapprovisionner la boutique.
-                  </p>
-                </div>
+                <p className="text-sm text-primary">Aucune commande en cours aujourd'hui.</p>
+                <p className="mt-1 text-xs text-muted">
+                    Lancez un nouveau panier fournisseur pour réapprovisionner la boutique.
+                </p>
+              </div>
               )}
             </div>
           </div>
@@ -574,8 +574,8 @@ export default function HomePage() {
                 </h2>
                 <p className="mt-1 text-sm text-secondary">
                   {latestSavedBasketDraft
-                    ? "Votre brouillon garde deja les dernieres quantites et le dernier total."
-                    : "Rechargez le dernier panier confirme sans tout refaire."}
+                    ? "Votre brouillon garde déjà les dernières quantités et le dernier total."
+                    : "Rechargez le dernier panier confirmé sans tout refaire."}
                 </p>
               </div>
             </div>
@@ -611,14 +611,14 @@ export default function HomePage() {
                   className="mt-4 w-full rounded-xl border border-accent/20 bg-accent/10 px-4 py-2.5 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
                 >
                   {latestSavedBasketDraft
-                    ? "Continuer brouillon"
-                    : "Relancer panier"}
+                    ? "Continuer le brouillon"
+                    : "Relancer le panier"}
                 </button>
               </div>
             ) : (
               <div className="mt-4 rounded-2xl border border-dashed border-border px-4 py-8 text-center">
                 <p className="text-sm text-primary">
-                  Aucun panier confirme a relancer pour le moment.
+                  Aucun panier confirmé à relancer pour le moment.
                 </p>
               </div>
             )}
@@ -655,10 +655,10 @@ export default function HomePage() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-heading text-lg font-semibold text-primary">
-                  Activite recente
+                  Activité récente
                 </h2>
                 <p className="mt-1 text-sm text-secondary">
-                  Les dernieres nouvelles sur les ventes, les paniers fournisseur et ce qui demande encore une action.
+                  Les dernières nouvelles sur les ventes, les paniers fournisseur et ce qui demande encore une action.
                 </p>
               </div>
             </div>

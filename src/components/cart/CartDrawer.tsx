@@ -17,10 +17,10 @@ function getSupplierLabel(items: Array<{ supplier: string }>): string {
   }
 
   if (supplierNames.length > 1) {
-    return `${supplierNames.length} suppliers in draft`;
+    return `${supplierNames.length} fournisseurs dans ce brouillon`;
   }
 
-  return "Add items to choose a supplier";
+  return "Ajoutez des articles pour définir le fournisseur";
 }
 
 export default function CartDrawer() {
@@ -58,7 +58,7 @@ export default function CartDrawer() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="font-heading text-base font-semibold text-primary">
-                Draft basket
+                Brouillon fournisseur
               </h2>
               <p className="mt-1 text-xs text-secondary">
                 {getDraftIntentLabel(draftIntent)}
@@ -68,7 +68,7 @@ export default function CartDrawer() {
               type="button"
               onClick={closeCart}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-bright hover:text-primary"
-              aria-label="Close cart"
+              aria-label="Fermer le brouillon"
             >
               <svg
                 className="h-4 w-4"
@@ -88,10 +88,10 @@ export default function CartDrawer() {
 
           <div className="mt-3 flex flex-wrap gap-2">
             <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-300">
-              {currentDraftOrder ? "Saved draft" : "Draft in progress"}
+              {currentDraftOrder ? "Brouillon enregistré" : "Brouillon en cours"}
             </span>
             <span className="rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted">
-              Editable before confirmation
+              Modifiable avant confirmation
             </span>
             {currentDraftOrder ? (
               <span className="rounded-full border border-border px-2 py-0.5 font-mono text-xs font-medium text-primary">
@@ -101,14 +101,14 @@ export default function CartDrawer() {
           </div>
 
           <div className="mt-4 rounded-2xl border border-border bg-surface-bright/60 p-4">
-            <p className="text-xs text-muted">Supplier</p>
+            <p className="text-xs text-muted">Fournisseur</p>
             <p className="mt-1 text-sm font-medium text-primary">
               {supplierLabel}
             </p>
             <div className="mt-4 grid grid-cols-3 gap-3">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
-                  Lines
+                  Lignes
                 </p>
                 <p className="mt-1 text-lg font-semibold text-primary">
                   {items.length}
@@ -116,7 +116,7 @@ export default function CartDrawer() {
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
-                  Units
+                  Unités
                 </p>
                 <p className="mt-1 text-lg font-semibold text-primary">
                   {totalItems}
@@ -154,9 +154,9 @@ export default function CartDrawer() {
                   d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"
                 />
               </svg>
-              <p className="text-sm text-secondary">Your draft basket is empty.</p>
+              <p className="text-sm text-secondary">Votre brouillon est vide.</p>
               <p className="mt-1 text-xs text-muted">
-                Add catalogue items or load a saved supplier basket.
+                Ajoutez des articles du catalogue ou relancez un ancien panier fournisseur.
               </p>
             </div>
           ) : (
@@ -180,7 +180,7 @@ export default function CartDrawer() {
                     type="button"
                     onClick={() => removeItem(item.id)}
                     className="ml-1 flex h-6 w-6 items-center justify-center rounded text-muted transition-colors hover:text-rose-300"
-                    aria-label={`Remove ${item.name}`}
+                    aria-label={`Retirer ${item.name}`}
                   >
                     <svg
                       className="h-3.5 w-3.5"
@@ -200,7 +200,7 @@ export default function CartDrawer() {
 
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <p className="text-xs text-secondary">
-                    Qty {item.quantity} | Min {item.min_order}
+                    Qté {item.quantity} | Minimum {item.min_order}
                   </p>
                   <div className="flex flex-shrink-0 items-center gap-1.5">
                     <button
@@ -230,7 +230,7 @@ export default function CartDrawer() {
         {items.length > 0 && (
           <div className="space-y-3 border-t border-border px-5 py-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-secondary">Draft total</span>
+              <span className="text-sm text-secondary">Total du brouillon</span>
               <span className="font-heading text-lg font-bold text-primary">
                 {formatCdf(totalAmount)}
               </span>
@@ -243,7 +243,7 @@ export default function CartDrawer() {
               }}
               className="accent-gradient btn-shine w-full rounded-lg py-2.5 text-sm font-medium text-background"
             >
-              Review and confirm
+              Vérifier et confirmer
             </button>
           </div>
         )}

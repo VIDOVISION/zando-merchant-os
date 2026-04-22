@@ -28,9 +28,9 @@ function getFilterLabel(filter: DeliveryFilter): string {
 }
 
 function getDeliveryStageLabel(status: DeliveryTrackingStatus): string {
-  if (status === "Pending") return "En attente de confirmation fournisseur";
+  if (status === "Pending") return "En attente fournisseur";
   if (status === "In Transit") return "En route";
-  return "Réceptionné";
+  return "Réceptionnée";
 }
 
 function getDeliverySortScore(status: DeliveryTrackingStatus): number {
@@ -72,7 +72,7 @@ function isDelayedDelivery(order: DeliveryOrder): boolean {
 
 function getDeliveryActionLabel(status: DeliveryTrackingStatus): string | null {
   if (status === "Pending") return "Marquer en route";
-  if (status === "In Transit") return "Marquer réceptionné";
+  if (status === "In Transit") return "Marquer réceptionnée";
   return null;
 }
 
@@ -206,7 +206,7 @@ export default function DeliveriesPage() {
           </p>
         </div>
         <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">Réceptionné</p>
+          <p className="text-xs text-muted">Réceptionnées</p>
           <p className="mt-2 font-heading text-3xl font-bold text-emerald-300">
             {deliveredCount}
           </p>
@@ -325,7 +325,7 @@ export default function DeliveriesPage() {
                         {order.supplierName}
                       </p>
                       <p className="mt-1 text-xs text-muted">
-                        Prévu {order.deliveryDate} | {order.items.length} ligne
+                        Arrivée prévue {order.deliveryDate} | {order.items.length} ligne
                         {order.items.length === 1 ? "" : "s"} | {totalUnits} unité
                         {totalUnits === 1 ? "" : "s"}
                       </p>

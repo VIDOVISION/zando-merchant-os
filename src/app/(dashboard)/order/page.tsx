@@ -9,7 +9,7 @@ import {
 } from "@/components/cart/CartContext";
 import CatalogueGrid from "@/components/catalogue/CatalogueGrid";
 import { useMerchantData } from "@/components/merchant/MerchantDataContext";
-import { formatCdf } from "@/lib/merchant-data";
+import { formatCdf, getMerchantCategoryLabel } from "@/lib/merchant-data";
 
 const NEW_ORDER_REVIEW_HREF = "/order-summary";
 
@@ -22,10 +22,10 @@ function getSupplierLabel(
   }
 
   if (supplierNames.length > 1) {
-    return `${supplierNames.length} suppliers in this draft`;
+    return `${supplierNames.length} fournisseurs dans ce brouillon`;
   }
 
-  return fallbackSupplierName ?? "Choose items to set the supplier";
+  return fallbackSupplierName ?? "Choisissez des articles pour définir le fournisseur";
 }
 
 export default function OrderPage() {
@@ -91,10 +91,10 @@ export default function OrderPage() {
   );
   const draftIntentLabel = getDraftIntentLabel(draftIntent);
   const draftIntentDescription = getDraftIntentDescription(draftIntent);
-  const draftStatusLabel = currentDraftOrder ? "Saved draft" : "Draft in progress";
+  const draftStatusLabel = currentDraftOrder ? "Brouillon enregistré" : "Brouillon en cours";
   const draftStatusCopy = currentDraftOrder
-    ? `${currentDraftOrder.reference} is already saved in Orders, but it has not been confirmed or sent yet.`
-    : "This basket is still being prepared here and will only appear in Orders after you review and confirm it.";
+    ? `${currentDraftOrder.reference} est déjà enregistré dans Commandes, mais n'a pas encore été confirmé ni envoyé.`
+    : "Ce panier est encore en préparation ici et n'apparaîtra dans Commandes qu'après vérification et confirmation.";
 
   useEffect(() => {
     if (!draftOrderId || currentDraftOrder?.status !== "Draft") {
@@ -117,7 +117,7 @@ export default function OrderPage() {
             {draftStatusLabel}
           </span>
           <span className="rounded-full border border-border px-2.5 py-1 text-xs font-medium text-muted">
-            Editable before confirmation
+            Modifiable avant confirmation
           </span>
           {currentDraftOrder ? (
             <span className="rounded-full border border-border px-2.5 py-1 font-mono text-xs font-medium text-primary">
@@ -128,25 +128,25 @@ export default function OrderPage() {
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-border bg-surface/50 p-4">
-            <p className="text-xs text-muted">Supplier</p>
+            <p className="text-xs text-muted">Fournisseur</p>
             <p className="mt-2 text-sm font-medium text-primary">
               {supplierLabel}
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-surface/50 p-4">
-            <p className="text-xs text-muted">Line items</p>
+            <p className="text-xs text-muted">Lignes</p>
             <p className="mt-2 font-heading text-3xl font-bold text-primary">
               {items.length}
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-surface/50 p-4">
-            <p className="text-xs text-muted">Units in draft</p>
+            <p className="text-xs text-muted">Unités du brouillon</p>
             <p className="mt-2 font-heading text-3xl font-bold text-primary">
               {totalItems}
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-surface/50 p-4">
-            <p className="text-xs text-muted">Draft value</p>
+            <p className="text-xs text-muted">Valeur du brouillon</p>
             <p className="mt-2 font-heading text-3xl font-bold text-accent">
               {formatCdf(totalAmount)}
             </p>
@@ -154,23 +154,23 @@ export default function OrderPage() {
         </div>
 
         <p className="mt-4 text-sm text-secondary">
-          {draftIntentDescription} {draftStatusCopy} You can still adjust
-          quantities or remove items before you review and confirm.
+          {draftIntentDescription} {draftStatusCopy} Vous pouvez encore ajuster
+          les quantités ou retirer des articles avant de vérifier et confirmer.
         </p>
       </section>
 
       <section className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="max-w-3xl">
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-accent/80">
-            New supplier order
+            Nouveau brouillon fournisseur
           </p>
           <h1 className="mt-2 font-heading text-3xl font-bold tracking-tight text-gradient">
-            Build and edit the supplier basket before you send it
+            Préparez et ajustez le panier fournisseur avant l'envoi
           </h1>
           <p className="mt-2 text-sm text-secondary">
-            This is the working draft for your shop in the DRC catalogue. Add
-            products, change quantities, then review and confirm when the basket
-            is ready.
+            Voici le brouillon de travail de votre boutique. Ajoutez des
+            produits, ajustez les quantités, puis vérifiez et confirmez quand le
+            panier est prêt.
           </p>
         </div>
 
@@ -178,28 +178,28 @@ export default function OrderPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-muted">
-                Draft basket
+                Brouillon fournisseur
               </p>
               <h2 className="mt-1 font-heading text-xl font-semibold text-primary">
                 {draftStatusLabel}
               </h2>
             </div>
             <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-300">
-              Not yet sent
+              Pas encore envoyé
             </span>
           </div>
 
           <div className="mt-4 rounded-2xl border border-border bg-surface/50 p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs text-muted">Supplier</p>
+                <p className="text-xs text-muted">Fournisseur</p>
                 <p className="mt-1 text-sm font-medium text-primary">
                   {supplierLabel}
                 </p>
               </div>
               {currentDraftOrder ? (
                 <div className="text-right">
-                  <p className="text-xs text-muted">Draft ref</p>
+                  <p className="text-xs text-muted">Réf. brouillon</p>
                   <p className="mt-1 font-mono text-sm font-semibold text-primary">
                     {currentDraftOrder.reference}
                   </p>
@@ -210,7 +210,7 @@ export default function OrderPage() {
             <div className="mt-4 grid grid-cols-3 gap-3">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
-                  Lines
+                  Lignes
                 </p>
                 <p className="mt-1 text-lg font-semibold text-primary">
                   {items.length}
@@ -218,7 +218,7 @@ export default function OrderPage() {
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
-                  Units
+                  Unités
                 </p>
                 <p className="mt-1 text-lg font-semibold text-primary">
                   {totalItems}
@@ -236,18 +236,18 @@ export default function OrderPage() {
           </div>
 
           <div className="mt-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-primary">Draft line items</p>
-              <p className="text-xs text-muted">
-                Change quantities before confirmation
-              </p>
-            </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-primary">Lignes du brouillon</p>
+                <p className="text-xs text-muted">
+                  Ajustez les quantités avant confirmation
+                </p>
+              </div>
 
             {items.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border px-4 py-8 text-center">
-                <p className="text-sm text-primary">No items in this draft yet.</p>
+                <p className="text-sm text-primary">Aucun article dans ce brouillon pour le moment.</p>
                 <p className="mt-1 text-xs text-muted">
-                  Add products from the catalogue or load a saved supplier basket.
+                  Ajoutez des produits depuis le catalogue ou relancez un ancien panier fournisseur.
                 </p>
               </div>
             ) : (
@@ -274,7 +274,7 @@ export default function OrderPage() {
                         type="button"
                         onClick={() => removeItem(item.id)}
                         className="flex h-7 w-7 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-bright hover:text-rose-300"
-                        aria-label={`Remove ${item.name}`}
+                        aria-label={`Retirer ${item.name}`}
                       >
                         <svg
                           className="h-4 w-4"
@@ -294,7 +294,7 @@ export default function OrderPage() {
 
                     <div className="mt-4 flex items-center justify-between gap-3">
                       <div className="text-xs text-secondary">
-                        Qty {item.quantity} | Min {item.min_order}
+                        Qté {item.quantity} | Minimum {item.min_order}
                       </div>
                       <div className="flex items-center gap-2 rounded-xl border border-border px-2 py-1.5">
                         <button
@@ -331,7 +331,7 @@ export default function OrderPage() {
                   : "accent-gradient btn-shine text-background"
               }`}
             >
-              Review and confirm
+              Vérifier et confirmer
             </Link>
             <button
               type="button"
@@ -339,7 +339,7 @@ export default function OrderPage() {
               disabled={!lastSuccessfulOrder}
               className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Load last basket
+              Relancer le dernier panier
             </button>
           </div>
         </div>
@@ -350,10 +350,10 @@ export default function OrderPage() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-accent/80">
-                Saved basket shortcut
+                Raccourci panier relancé
               </p>
               <h2 className="mt-1 font-heading text-lg font-semibold text-primary">
-                Load {lastSuccessfulOrder.reference} back into this draft
+                Relancer {lastSuccessfulOrder.reference} dans ce brouillon
               </h2>
               <p className="mt-1 text-sm text-secondary">
                 {lastSuccessfulOrder.supplierName} |{" "}
@@ -368,7 +368,7 @@ export default function OrderPage() {
               onClick={handleLoadLastSupplierBasket}
               className="rounded-xl border border-accent/20 bg-accent/10 px-4 py-2.5 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
             >
-              Load saved basket
+              Relancer le panier
             </button>
           </div>
         </section>
@@ -381,14 +381,14 @@ export default function OrderPage() {
               Catalogue
             </h2>
             <p className="mt-1 text-sm text-secondary">
-              Seeded DRC assortment for drinks, staples, pantry goods, and home
-              care.
+              Catalogue boutique pour les boissons, produits de base, épicerie
+              et entretien.
             </p>
           </div>
 
           <div className="flex flex-col gap-3 lg:flex-row">
             <label className="relative block min-w-[260px]">
-              <span className="sr-only">Search catalogue</span>
+              <span className="sr-only">Rechercher dans le catalogue</span>
               <svg
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
                 fill="none"
@@ -406,7 +406,7 @@ export default function OrderPage() {
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search product or supplier..."
+                placeholder="Rechercher un produit ou un fournisseur..."
                 className="w-full rounded-xl border border-border bg-surface px-10 py-2.5 text-sm text-primary placeholder:text-muted focus:border-accent/40 focus:outline-none focus:ring-1 focus:ring-accent/30"
               />
             </label>
@@ -425,7 +425,7 @@ export default function OrderPage() {
                         : "border-border text-secondary hover:border-border-bright hover:text-primary"
                     }`}
                   >
-                    {category}
+                    {getMerchantCategoryLabel(category)}
                   </button>
                 );
               })}
@@ -439,9 +439,9 @@ export default function OrderPage() {
 
         {filteredProducts.length === 0 && (
           <div className="mt-5 rounded-2xl border border-dashed border-border px-6 py-10 text-center">
-            <p className="text-sm text-primary">No catalogue items found.</p>
+            <p className="text-sm text-primary">Aucun article ne correspond à cette recherche.</p>
             <p className="mt-1 text-xs text-muted">
-              Try another search or reset the category filter.
+              Essayez une autre recherche ou réinitialisez le filtre de catégorie.
             </p>
           </div>
         )}

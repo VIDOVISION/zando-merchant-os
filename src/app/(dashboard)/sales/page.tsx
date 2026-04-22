@@ -740,7 +740,7 @@ export default function SalesPage() {
                 </p>
               </div>
               <div className="rounded-2xl border border-border bg-surface/50 p-4">
-                <p className="text-xs text-muted">Entrées de vente</p>
+                <p className="text-xs text-muted">Ventes enregistrées</p>
                 <p className="mt-2 font-heading text-3xl font-bold text-amber-300">
                   {filteredSales.length}
                 </p>
@@ -796,8 +796,8 @@ export default function SalesPage() {
         <div className="glass-card rounded-2xl p-4">
           <p className="text-xs text-muted">
             {todaySales.length > 0
-              ? "Entrées de vente du jour"
-              : "Entrées de vente sur 7 jours"}
+              ? "Ventes enregistrées du jour"
+              : "Ventes enregistrées sur 7 jours"}
           </p>
           <p className="mt-2 font-heading text-3xl font-bold text-amber-300">
             {quickSales.length}
@@ -1077,7 +1077,7 @@ export default function SalesPage() {
 
             <div className="rounded-2xl border border-accent/20 bg-accent/10 px-4 py-3">
               <p className="text-xs uppercase tracking-[0.2em] text-muted">
-                Total vente
+                Total de la vente
               </p>
               <p className="mt-1 font-heading text-2xl font-bold text-accent">
                 {formatCdf(totalValue)}

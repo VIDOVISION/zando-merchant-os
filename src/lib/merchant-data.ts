@@ -8,6 +8,14 @@ export type MerchantOrderStatus =
   | "Delivered"
   | "Cancelled";
 export type MerchantSalePaymentMethod = "Cash" | "Mobile Money" | "Card";
+export type MerchantInventoryMovementReason =
+  | "stock_initial"
+  | "sale"
+  | "order-received"
+  | "manual-entry"
+  | "inventory-correction"
+  | "breakage-loss"
+  | "manual-output";
 export type MerchantOrderSourceDetail =
   | "manual-new-order"
   | "quick-reorder"
@@ -37,6 +45,7 @@ export interface MerchantProduct {
   reorderQuantity: number;
   leadTimeDays: number;
   lastRestockedAt: string;
+  isActive: boolean;
 }
 
 export interface MerchantOrderItem {
@@ -88,12 +97,24 @@ export interface MerchantSale {
   quickAddedProduct?: boolean;
 }
 
+export interface MerchantInventoryMovement {
+  id: string;
+  productId: string;
+  productName: string;
+  reason: MerchantInventoryMovementReason;
+  quantityChange: number;
+  stockAfter: number;
+  note?: string;
+  createdAt: string;
+}
+
 export interface MerchantState {
   profile: MerchantProfile;
   products: MerchantProduct[];
   orders: MerchantOrder[];
   activities: MerchantActivity[];
   sales: MerchantSale[];
+  inventoryMovements: MerchantInventoryMovement[];
 }
 
 export interface InventoryProduct extends MerchantProduct {
@@ -131,18 +152,19 @@ export function formatCdf(amount: number): string {
 }
 
 export function formatShortDate(dateString: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("fr-FR", {
     day: "numeric",
     month: "short",
   }).format(new Date(dateString));
 }
 
 export function formatDateTime(dateString: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("fr-FR", {
     day: "numeric",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   }).format(new Date(dateString));
 }
 
@@ -169,30 +191,31 @@ export function getMerchantOrderSourceLabel(
 ): string {
   const sourceDetail = getMerchantOrderSourceDetail(order);
 
-  if (sourceDetail === "quick-reorder") return "Quick reorder";
-  if (sourceDetail === "low-stock-reorder") return "Quick reorder";
-  if (sourceDetail === "inventory-restock") return "Inventory restock";
-  if (sourceDetail === "saved-basket-reload") return "From previous basket";
-  return "Manual order";
+  if (sourceDetail === "quick-reorder") return "Réappro rapide";
+  if (sourceDetail === "low-stock-reorder") return "Réappro rapide";
+  if (sourceDetail === "inventory-restock") return "Réappro stock";
+  if (sourceDetail === "saved-basket-reload") return "Panier relancé";
+  return "Commande manuelle";
 }
 
 export function getMerchantOrderStatusLabel(
   status: MerchantOrderStatus
 ): string {
-  if (status === "Draft") return "Saved draft";
-  if (status === "Pending") return "Waiting supplier confirmation";
-  if (status === "Confirmed") return "Supplier confirmed";
-  if (status === "Packed") return "Being packed";
-  if (status === "In Transit") return "On the way";
-  return status;
+  if (status === "Draft") return "Brouillon";
+  if (status === "Pending") return "En attente fournisseur";
+  if (status === "Confirmed") return "En route";
+  if (status === "Packed") return "En route";
+  if (status === "In Transit") return "En route";
+  if (status === "Delivered") return "Réceptionnée";
+  return "Annulée";
 }
 
 export function getDeliveryTrackingStatusLabel(
   status: DeliveryTrackingStatus
 ): string {
-  if (status === "Pending") return "Awaiting supplier confirmation";
-  if (status === "In Transit") return "On the way";
-  return "Received";
+  if (status === "Pending") return "En attente fournisseur";
+  if (status === "In Transit") return "En route";
+  return "Réceptionnée";
 }
 
 export function getDeliveryTrackingStatus(
@@ -262,30 +285,60 @@ export function getMerchantOrderStatusDescription(
   status: MerchantOrderStatus
 ): string {
   if (status === "Draft") {
-    return "This basket is saved, still editable, and not yet sent to the supplier.";
+    return "Ce brouillon est enregistré, encore modifiable et pas encore envoyé au fournisseur.";
   }
 
   if (status === "Pending") {
-    return "This order is already sent and is waiting for the supplier to confirm it.";
+    return "Cette commande est déjà envoyée et attend encore la confirmation du fournisseur.";
   }
 
   if (status === "Confirmed") {
-    return "This order is already placed and the supplier has confirmed it.";
+    return "Le fournisseur a confirmé cette commande.";
   }
 
   if (status === "Packed") {
-    return "This order is already placed and is being packed before dispatch.";
+    return "Le fournisseur prépare cette commande avant l'expédition.";
   }
 
   if (status === "In Transit") {
-    return "This order is already placed and is on the way to the shop.";
+    return "Cette commande est en route vers la boutique.";
   }
 
   if (status === "Delivered") {
-    return "This order has already reached the shop.";
+    return "Cette commande a déjà été réceptionnée à la boutique.";
   }
 
-  return "This order was cancelled before completion.";
+  return "Cette commande a été annulée avant la réception.";
+}
+
+export function getMerchantPaymentMethodLabel(
+  method: MerchantSalePaymentMethod
+): string {
+  if (method === "Cash") return "Espèces";
+  if (method === "Mobile Money") return "Mobile Money";
+  return "Carte";
+}
+
+export function getMerchantInventoryMovementReasonLabel(
+  reason: MerchantInventoryMovementReason
+): string {
+  if (reason === "stock_initial") return "Stock initial";
+  if (reason === "sale") return "Vente";
+  if (reason === "order-received") return "Commande reçue";
+  if (reason === "manual-entry") return "Entrée manuelle";
+  if (reason === "inventory-correction") return "Correction inventaire";
+  if (reason === "breakage-loss") return "Casse / perte";
+  return "Sortie manuelle";
+}
+
+export function getMerchantCategoryLabel(category: string): string {
+  if (category === "All") return "Toutes";
+  if (category === "Beverages") return "Boissons";
+  if (category === "Home Care") return "Entretien";
+  if (category === "Pantry") return "Épicerie";
+  if (category === "Staples") return "Produits de base";
+  if (category === "General") return "Divers";
+  return category;
 }
 
 export function getMerchantOrderTotalUnits(order: Pick<MerchantOrder, "items">): number {
@@ -316,19 +369,19 @@ export function getMerchantActivityLabel(
   activity: Pick<MerchantActivity, "type" | "tone">
 ): string {
   if (activity.type === "delivery" && activity.tone === "success") {
-    return "Livre";
+    return "Réception";
   }
 
   if (activity.type === "order" && activity.tone === "success") {
-    return "Envoyee";
+    return "Commande envoyée";
   }
 
   if (activity.type === "order" && activity.tone === "warning") {
-    return "A confirmer";
+    return "À confirmer";
   }
 
   if (activity.type === "alert") {
-    return "A traiter";
+    return "À traiter";
   }
 
   if (activity.type === "sale") {
@@ -346,16 +399,16 @@ export function formatRelativeActivity(dateString: string): string {
 
   if (diffHours < 1) {
     const diffMinutes = Math.max(1, Math.floor(diffMs / (1000 * 60)));
-    return `${diffMinutes} min ago`;
+    return `Il y a ${diffMinutes} min`;
   }
 
   if (diffHours < 24) {
-    return `${diffHours} hr ago`;
+    return `Il y a ${diffHours} h`;
   }
 
   const diffDays = Math.floor(diffHours / 24);
   if (diffDays < 7) {
-    return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
+    return `Il y a ${diffDays} j`;
   }
 
   return formatShortDate(dateString);
@@ -405,6 +458,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
     reorderQuantity: 12,
     leadTimeDays: 2,
     lastRestockedAt: "2026-04-04T08:20:00.000Z",
+    isActive: true,
   },
   {
     id: "sucre-kwilu-5kg",
@@ -422,6 +476,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
     reorderQuantity: 10,
     leadTimeDays: 2,
     lastRestockedAt: "2026-04-02T09:40:00.000Z",
+    isActive: true,
   },
   {
     id: "farine-froment-10kg",
@@ -439,6 +494,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
     reorderQuantity: 8,
     leadTimeDays: 2,
     lastRestockedAt: "2026-04-05T10:10:00.000Z",
+    isActive: true,
   },
   {
     id: "huile-selleta-5l",
@@ -456,6 +512,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
     reorderQuantity: 6,
     leadTimeDays: 3,
     lastRestockedAt: "2026-03-31T14:00:00.000Z",
+    isActive: true,
   },
   {
     id: "tomate-tmt-48",
@@ -473,6 +530,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
     reorderQuantity: 8,
     leadTimeDays: 2,
     lastRestockedAt: "2026-04-06T07:45:00.000Z",
+    isActive: true,
   },
   {
     id: "sel-io-25",
@@ -490,6 +548,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
     reorderQuantity: 6,
     leadTimeDays: 2,
     lastRestockedAt: "2026-03-28T15:20:00.000Z",
+    isActive: true,
   },
   {
     id: "fanta-orange-24",
@@ -507,6 +566,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
     reorderQuantity: 8,
     leadTimeDays: 1,
     lastRestockedAt: "2026-04-07T06:50:00.000Z",
+    isActive: true,
   },
   {
     id: "coca-cola-24",
@@ -524,6 +584,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
     reorderQuantity: 10,
     leadTimeDays: 1,
     lastRestockedAt: "2026-03-30T07:10:00.000Z",
+    isActive: true,
   },
   {
     id: "primus-12",
@@ -541,6 +602,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
     reorderQuantity: 8,
     leadTimeDays: 2,
     lastRestockedAt: "2026-04-01T11:15:00.000Z",
+    isActive: true,
   },
   {
     id: "vitalo-water-30",
@@ -558,6 +620,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
     reorderQuantity: 12,
     leadTimeDays: 1,
     lastRestockedAt: "2026-04-03T08:55:00.000Z",
+    isActive: true,
   },
   {
     id: "omo-powder-24",
@@ -575,6 +638,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
     reorderQuantity: 6,
     leadTimeDays: 2,
     lastRestockedAt: "2026-04-06T09:25:00.000Z",
+    isActive: true,
   },
   {
     id: "savon-mama-48",
@@ -592,6 +656,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
     reorderQuantity: 6,
     leadTimeDays: 2,
     lastRestockedAt: "2026-03-29T13:30:00.000Z",
+    isActive: true,
   },
 ];
 
@@ -734,6 +799,7 @@ export function normalizeMerchantState(
         product.lastRestockedAt ??
         seededProduct?.lastRestockedAt ??
         new Date().toISOString(),
+      isActive: product.isActive ?? seededProduct?.isActive ?? true,
     };
   });
 
@@ -750,6 +816,8 @@ export function normalizeMerchantState(
       })) ?? seededState.orders,
     activities: rawState.activities ?? seededState.activities,
     sales: rawState.sales ?? seededState.sales,
+    inventoryMovements:
+      rawState.inventoryMovements ?? seededState.inventoryMovements,
   };
 }
 
@@ -765,6 +833,7 @@ export function createEmptyMerchantState(
     orders: [],
     activities: [],
     sales: [],
+    inventoryMovements: [],
   };
 }
 
@@ -869,6 +938,65 @@ export function createSeedState(): MerchantState {
     }),
   ];
 
+  const inventoryMovements: MerchantInventoryMovement[] = [
+    {
+      id: "movement-seed-order-10418-riz",
+      productId: "riz-bella-25kg",
+      productName: "Riz Bella 25kg",
+      reason: "order-received",
+      quantityChange: 6,
+      stockAfter: 15,
+      createdAt: "2026-04-08T16:25:00.000Z",
+      note: "Commande reçue de Marché Gambela Cash & Carry.",
+    },
+    {
+      id: "movement-seed-order-10418-tomate",
+      productId: "tomate-tmt-48",
+      productName: "TMT Tomato Paste 48 x 70g",
+      reason: "order-received",
+      quantityChange: 5,
+      stockAfter: 12,
+      createdAt: "2026-04-08T16:25:00.000Z",
+      note: "Commande reçue de Marché Gambela Cash & Carry.",
+    },
+    {
+      id: "movement-seed-sale-201",
+      productId: "vitalo-water-30",
+      productName: "Vitalo Water 30 x 500ml",
+      reason: "sale",
+      quantityChange: -3,
+      stockAfter: 5,
+      createdAt: saleOneCreatedAt,
+    },
+    {
+      id: "movement-seed-sale-202",
+      productId: "sucre-kwilu-5kg",
+      productName: "Sucre Kwilu 5kg",
+      reason: "sale",
+      quantityChange: -2,
+      stockAfter: 6,
+      createdAt: saleTwoCreatedAt,
+    },
+    {
+      id: "movement-seed-sale-203",
+      productId: "fanta-orange-24",
+      productName: "Fanta Orange 24 x 50cl",
+      reason: "sale",
+      quantityChange: -2,
+      stockAfter: 10,
+      createdAt: saleThreeCreatedAt,
+    },
+    {
+      id: "movement-seed-sale-204",
+      productId: "riz-bella-25kg",
+      productName: "Riz Bella 25kg",
+      reason: "sale",
+      quantityChange: -1,
+      stockAfter: 14,
+      createdAt: saleFourCreatedAt,
+    },
+  ];
+
   return {
     profile: DEFAULT_MERCHANT_PROFILE,
     products: SEEDED_PRODUCTS,
@@ -887,27 +1015,27 @@ export function createSeedState(): MerchantState {
         id: "activity-alert-1",
         type: "alert",
         tone: "warning",
-        title: "Deux rayons sont a reapprovisionner",
+        title: "Deux rayons sont à réapprovisionner",
         detail:
-          "Coca-Cola 24 x 50cl et Sel Iode sont en rupture. Reappro a lancer avant le rush du soir.",
+          "Coca-Cola 24 x 50cl et Sel Iodé sont en rupture. Réappro à lancer avant le rush du soir.",
         createdAt: "2026-04-09T07:35:00.000Z",
       },
       {
         id: "activity-order-1",
         type: "order",
         tone: "success",
-        title: "Commande envoyee au fournisseur",
+        title: "Commande envoyée au fournisseur",
         detail:
-          "ZND-10421 chez Matete FMCG Center a ete envoyee pour Selleta Oil et Savon Mama. En attente de confirmation fournisseur.",
+          "ZND-10421 chez Matete FMCG Center a été envoyée pour Selleta Oil et Savon Mama. En attente de confirmation fournisseur.",
         createdAt: orderOneCreatedAt,
       },
       {
         id: "activity-delivery-1",
         type: "delivery",
         tone: "success",
-        title: "Livraison recue de Gambela",
+        title: "Livraison reçue de Gambela",
         detail:
-          "ZND-10418 de Marche Gambela Cash & Carry a bien ete recue a Masina.",
+          "ZND-10418 de Marché Gambela Cash & Carry a bien été reçue à Masina.",
         createdAt: "2026-04-08T16:25:00.000Z",
       },
       {
@@ -916,10 +1044,11 @@ export function createSeedState(): MerchantState {
         tone: "success",
         title: "Commande boisson en route",
         detail:
-          "Bandal Beverage Hub a expedie ZND-10420. Livraison attendue aujourd'hui.",
+          "Bandal Beverage Hub a expédié ZND-10420. Livraison attendue aujourd'hui.",
         createdAt: "2026-04-08T12:10:00.000Z",
       },
     ],
     sales,
+    inventoryMovements,
   };
 }

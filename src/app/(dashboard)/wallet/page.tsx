@@ -1,122 +1,447 @@
-import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import DataTable from "@/components/dashboard/DataTable";
+import { createClient } from "@/lib/supabase/server";
+import { formatCdf } from "@/lib/merchant-data";
 
 export const dynamic = "force-dynamic";
 
-const LOAN_COLUMNS = [
-  { key: "appId", label: "Ref", sortable: true },
-  { key: "amount", label: "Amount", sortable: true },
-  { key: "purpose", label: "Purpose", sortable: false },
-  { key: "status", label: "Status", sortable: true },
-  { key: "appliedDate", label: "Date", sortable: true },
-];
+type SaleRow = {
+  id: string;
+  product_name: string;
+  quantity: number;
+  total_amount: number;
+  payment_method: "Cash" | "Mobile Money" | "Card";
+  sold_at: string;
+};
 
-export default async function WalletPage() {
+type SupplierOrderStatus =
+  | "Draft"
+  | "Pending"
+  | "Confirmed"
+  | "Packed"
+  | "In Transit"
+  | "Delivered"
+  | "Cancelled";
+
+type SupplierOrderRow = {
+  id: string;
+  reference: string;
+  supplier_name: string;
+  status: SupplierOrderStatus;
+  total_amount: number;
+  created_at: string;
+  eta_at: string | null;
+};
+
+type PaymentFlowItem = {
+  id: string;
+  kind: "incoming" | "outgoing";
+  label: string;
+  title: string;
+  detail: string;
+  amount: number;
+  createdAt: string;
+};
+
+const PAYMENT_METHODS = ["Cash", "Mobile Money", "Card"] as const;
+
+function getPaymentMethodLabel(method: (typeof PAYMENT_METHODS)[number]): string {
+  if (method === "Cash") return "Espèces";
+  if (method === "Mobile Money") return "Mobile Money";
+  return "Carte";
+}
+
+function getSupplierStatusLabel(status: SupplierOrderStatus): string {
+  if (status === "Pending") return "En attente fournisseur";
+  if (status === "Delivered") return "Réceptionnée";
+  return "En route";
+}
+
+function formatFlowDate(dateString: string): string {
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(dateString));
+}
+
+function formatShortDate(dateString: string | null): string {
+  if (!dateString) return "Date à confirmer";
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "short",
+  }).format(new Date(dateString));
+}
+
+function isMovingSupplierOrder(status: SupplierOrderStatus): boolean {
+  return status === "Confirmed" || status === "Packed" || status === "In Transit";
+}
+
+function sumAmounts(rows: Array<{ total_amount: number | null }>): number {
+  return rows.reduce((total, row) => total + (row.total_amount ?? 0), 0);
+}
+
+export default async function PaymentsPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { data: loans }, { data: pendingOrders }] = await Promise.all([
-    supabase.from("merchant_profiles").select("credit_limit, credit_used").maybeSingle(),
-    supabase.from("loan_applications").select("*").order("created_at", { ascending: false }),
-    supabase.from("orders").select("total_amount, supplier_name, order_date")
-      .in("status", ["Pending", "Confirmed"]).order("created_at", { ascending: false }),
+  const [salesResult, supplierOrdersResult] = await Promise.all([
+    supabase
+      .from("sales")
+      .select("id, product_name, quantity, total_amount, payment_method, sold_at")
+      .eq("merchant_id", user.id)
+      .order("sold_at", { ascending: false }),
+    supabase
+      .from("supplier_orders")
+      .select("id, reference, supplier_name, status, total_amount, created_at, eta_at")
+      .eq("merchant_id", user.id)
+      .order("created_at", { ascending: false }),
   ]);
 
-  const creditLimit = profile?.credit_limit ?? 0;
-  const creditUsed = profile?.credit_used ?? 0;
-  const creditAvailable = creditLimit - creditUsed;
-  const usedPercent = creditLimit > 0 ? Math.round((creditUsed / creditLimit) * 100) : 0;
-  const activeLoans = (loans ?? []).filter((l) => l.status === "Active");
-  const pendingTotal = (pendingOrders ?? []).reduce((sum, o) => sum + (o.total_amount ?? 0), 0);
+  const sales = ((salesResult.data as SaleRow[] | null) ?? []).filter(
+    (sale) => sale.total_amount != null
+  );
+  const supplierOrders = ((supplierOrdersResult.data as SupplierOrderRow[] | null) ?? []).filter(
+    (order) => order.status !== "Draft" && order.status !== "Cancelled"
+  );
 
-  const rows = (loans ?? []).map((l, i) => ({
-    id: l.id,
-    appId: `LN-${new Date(l.applied_date ?? l.created_at).getFullYear()}-${String(i + 1).padStart(3, "0")}`,
-    amount: `R ${(l.amount ?? 0).toLocaleString("en-ZA")}`,
-    purpose: l.purpose ?? "\u2014",
-    status: l.status,
-    appliedDate: l.applied_date ?? "\u2014",
-  }));
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(todayStart);
+  weekStart.setDate(weekStart.getDate() - 6);
+
+  const salesToday = sales.filter((sale) => new Date(sale.sold_at) >= todayStart);
+  const salesWeek = sales.filter((sale) => new Date(sale.sold_at) >= weekStart);
+
+  const payableOrders = supplierOrders.filter((order) => order.status !== "Delivered");
+  const pendingSupplierOrders = supplierOrders.filter((order) => order.status === "Pending");
+  const movingSupplierOrders = supplierOrders.filter((order) =>
+    isMovingSupplierOrder(order.status)
+  );
+  const settledSupplierOrders = supplierOrders.filter(
+    (order) => order.status === "Delivered"
+  );
+
+  const cashInToday = sumAmounts(salesToday);
+  const cashInWeek = sumAmounts(salesWeek);
+  const supplierPayableAmount = sumAmounts(payableOrders);
+  const supplierSettledAmount = sumAmounts(settledSupplierOrders);
+  const pendingSupplierAmount = sumAmounts(pendingSupplierOrders);
+  const movingSupplierAmount = sumAmounts(movingSupplierOrders);
+
+  const paymentMethodBreakdown = PAYMENT_METHODS.map((method) => {
+    const methodSales = salesWeek.filter((sale) => sale.payment_method === method);
+
+    return {
+      method,
+      label: getPaymentMethodLabel(method),
+      amount: sumAmounts(methodSales),
+      count: methodSales.length,
+    };
+  });
+
+  const recentFlows: PaymentFlowItem[] = [
+    ...sales.map((sale) => ({
+      id: `sale-${sale.id}`,
+      kind: "incoming" as const,
+      label: "Encaissement",
+      title: sale.product_name,
+      detail: `${sale.quantity} unité${sale.quantity === 1 ? "" : "s"} · ${getPaymentMethodLabel(
+        sale.payment_method
+      )}`,
+      amount: sale.total_amount,
+      createdAt: sale.sold_at,
+    })),
+    ...supplierOrders.map((order) => ({
+      id: `order-${order.id}`,
+      kind: "outgoing" as const,
+      label: "Paiement fournisseur",
+      title: order.supplier_name,
+      detail: `${order.reference} · ${getSupplierStatusLabel(order.status)}`,
+      amount: order.total_amount,
+      createdAt: order.created_at,
+    })),
+  ]
+    .sort(
+      (left, right) =>
+        new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+    )
+    .slice(0, 10);
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-heading text-2xl font-bold tracking-tight text-gradient">Wallet</h1>
-        <p className="mt-1 text-sm text-secondary">Your balance, credit, and working capital.</p>
+        <h1 className="font-heading text-2xl font-bold tracking-tight text-gradient">
+          Paiements
+        </h1>
+        <p className="mt-1 text-sm text-secondary">
+          Suivez ce que vous avez encaissé, ce qu&apos;il reste à payer aux
+          fournisseurs, et les flux récents de la boutique.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="glass-card rounded-xl p-6">
-          <p className="text-xs text-muted uppercase tracking-wider font-medium mb-2">Credit Available</p>
-          <p className="font-heading text-4xl font-bold text-primary">R {creditAvailable.toLocaleString("en-ZA")}</p>
-          <p className="text-xs text-secondary mt-1">of R {creditLimit.toLocaleString("en-ZA")} limit</p>
-          {creditLimit > 0 && (
-            <div className="mt-4">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs text-muted">Used: R {creditUsed.toLocaleString("en-ZA")}</span>
-                <span className="text-xs text-muted">{usedPercent}%</span>
+          <p className="text-xs text-muted">Encaissements du jour</p>
+          <p className="mt-2 font-heading text-3xl font-bold text-accent">
+            {formatCdf(cashInToday)}
+          </p>
+          <p className="mt-1 text-xs text-secondary">
+            {salesToday.length} vente{salesToday.length === 1 ? "" : "s"} enregistrée
+            {salesToday.length === 1 ? "" : "s"}
+          </p>
+        </div>
+
+        <div className="glass-card rounded-xl p-6">
+          <p className="text-xs text-muted">Encaissements sur 7 jours</p>
+          <p className="mt-2 font-heading text-3xl font-bold text-primary">
+            {formatCdf(cashInWeek)}
+          </p>
+          <p className="mt-1 text-xs text-secondary">
+            {salesWeek.length} vente{salesWeek.length === 1 ? "" : "s"} sur la période
+          </p>
+        </div>
+
+        <div className="glass-card rounded-xl p-6">
+          <p className="text-xs text-muted">À payer aux fournisseurs</p>
+          <p className="mt-2 font-heading text-3xl font-bold text-yellow-300">
+            {formatCdf(supplierPayableAmount)}
+          </p>
+          <p className="mt-1 text-xs text-secondary">
+            {payableOrders.length} commande{payableOrders.length === 1 ? "" : "s"} encore
+            à suivre
+          </p>
+        </div>
+
+        <div className="glass-card rounded-xl p-6">
+          <p className="text-xs text-muted">Déjà réglé</p>
+          <p className="mt-2 font-heading text-3xl font-bold text-emerald-300">
+            {formatCdf(supplierSettledAmount)}
+          </p>
+          <p className="mt-1 text-xs text-secondary">
+            {settledSupplierOrders.length} commande
+            {settledSupplierOrders.length === 1 ? "" : "s"} réceptionnée
+            {settledSupplierOrders.length === 1 ? "" : "s"}
+          </p>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="glass-card rounded-xl p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-heading text-lg font-semibold text-primary">
+                Répartition par mode de paiement
+              </h2>
+              <p className="mt-1 text-sm text-secondary">
+                Encaissements enregistrés sur les 7 derniers jours.
+              </p>
+            </div>
+            <span className="rounded-full border border-accent/20 bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent">
+              7 jours
+            </span>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {paymentMethodBreakdown.map((entry) => (
+              <div
+                key={entry.method}
+                className="rounded-2xl border border-border bg-surface/40 px-4 py-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-primary">{entry.label}</p>
+                    <p className="mt-1 text-xs text-secondary">
+                      {entry.count} vente{entry.count === 1 ? "" : "s"} sur 7 jours
+                    </p>
+                  </div>
+                  <p className="text-sm font-semibold text-primary">
+                    {formatCdf(entry.amount)}
+                  </p>
+                </div>
               </div>
-              <div className="h-2 rounded-full bg-surface-bright overflow-hidden">
-                <div className={`h-full rounded-full transition-all ${usedPercent > 80 ? "bg-red-400" : usedPercent > 50 ? "bg-yellow-400" : "bg-accent"}`}
-                  style={{ width: `${Math.min(usedPercent, 100)}%` }} />
+            ))}
+          </div>
+        </div>
+
+        <div className="glass-card rounded-xl p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-heading text-lg font-semibold text-primary">
+                Paiements en attente
+              </h2>
+              <p className="mt-1 text-sm text-secondary">
+                Commandes envoyées qui demandent encore un suivi marchand.
+              </p>
+            </div>
+            <Link
+              href="/orders"
+              className="rounded-full border border-border bg-surface/60 px-3 py-1.5 text-xs font-medium text-primary transition hover:border-accent/30 hover:text-accent"
+            >
+              Voir les commandes
+            </Link>
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-border bg-surface/40 px-4 py-4">
+              <p className="text-xs text-muted">En attente fournisseur</p>
+              <p className="mt-2 text-2xl font-heading font-semibold text-yellow-300">
+                {formatCdf(pendingSupplierAmount)}
+              </p>
+              <p className="mt-1 text-xs text-secondary">
+                {pendingSupplierOrders.length} commande
+                {pendingSupplierOrders.length === 1 ? "" : "s"}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border bg-surface/40 px-4 py-4">
+              <p className="text-xs text-muted">Déjà en route</p>
+              <p className="mt-2 text-2xl font-heading font-semibold text-sky-300">
+                {formatCdf(movingSupplierAmount)}
+              </p>
+              <p className="mt-1 text-xs text-secondary">
+                {movingSupplierOrders.length} commande
+                {movingSupplierOrders.length === 1 ? "" : "s"}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {payableOrders.length > 0 ? (
+              payableOrders.slice(0, 5).map((order) => (
+                <div
+                  key={order.id}
+                  className="rounded-2xl border border-border bg-surface/40 px-4 py-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-primary">
+                          {order.supplier_name}
+                        </p>
+                        <span className="rounded-full border border-border bg-background/50 px-2 py-0.5 text-[11px] text-secondary">
+                          {getSupplierStatusLabel(order.status)}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-secondary">
+                        {order.reference} · Arrivée prévue {formatShortDate(order.eta_at)}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold text-primary">
+                      {formatCdf(order.total_amount)}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-dashed border-border bg-surface/30 px-4 py-8 text-center">
+                <p className="text-sm text-primary">Aucun paiement fournisseur à suivre.</p>
+                <p className="mt-1 text-xs text-secondary">
+                  Les nouvelles commandes envoyées apparaîtront ici.
+                </p>
               </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="glass-card rounded-xl p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-heading text-lg font-semibold text-primary">
+              Historique des flux
+            </h2>
+            <p className="mt-1 text-sm text-secondary">
+              Derniers encaissements et sorties vers les fournisseurs.
+            </p>
+          </div>
+          <span className="rounded-full border border-border bg-surface/60 px-2.5 py-1 text-xs text-secondary">
+            {recentFlows.length} mouvement{recentFlows.length === 1 ? "" : "s"}
+          </span>
+        </div>
+
+        <div className="mt-5 space-y-3">
+          {recentFlows.length > 0 ? (
+            recentFlows.map((flow) => (
+              <div
+                key={flow.id}
+                className="flex flex-col gap-3 rounded-2xl border border-border bg-surface/40 px-4 py-4 sm:flex-row sm:items-start sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                        flow.kind === "incoming"
+                          ? "border border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
+                          : "border border-yellow-400/20 bg-yellow-400/10 text-yellow-300"
+                      }`}
+                    >
+                      {flow.label}
+                    </span>
+                    <span className="text-xs text-muted">{formatFlowDate(flow.createdAt)}</span>
+                  </div>
+                  <p className="mt-2 text-sm font-medium text-primary">{flow.title}</p>
+                  <p className="mt-1 text-xs text-secondary">{flow.detail}</p>
+                </div>
+                <p
+                  className={`text-sm font-semibold ${
+                    flow.kind === "incoming" ? "text-emerald-300" : "text-yellow-300"
+                  }`}
+                >
+                  {flow.kind === "incoming" ? "+" : "-"}
+                  {formatCdf(flow.amount)}
+                </p>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border bg-surface/30 px-4 py-8 text-center">
+              <p className="text-sm text-primary">Aucun flux récent à afficher.</p>
+              <p className="mt-1 text-xs text-secondary">
+                Les ventes et commandes fournisseurs apparaîtront ici.
+              </p>
             </div>
           )}
         </div>
+      </section>
 
-        <div className="space-y-3">
-          <div className="glass-card rounded-xl p-4">
-            <p className="text-xs text-muted">Active Loans</p>
-            <p className="font-heading text-xl font-bold text-primary mt-0.5">{activeLoans.length}</p>
+      <section className="glass-card rounded-xl border border-border p-6">
+        <div className="flex items-start gap-3">
+          <div className="rounded-xl border border-accent/20 bg-accent/10 p-2 text-accent">
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.8}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+              />
+            </svg>
           </div>
-          <div className="glass-card rounded-xl p-4">
-            <p className="text-xs text-muted">Pending Payments</p>
-            <p className={`font-heading text-xl font-bold mt-0.5 ${pendingTotal > 0 ? "text-yellow-400" : "text-primary"}`}>
-              {pendingTotal > 0 ? `R ${pendingTotal.toLocaleString("en-ZA")}` : "\u2014"}
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="font-heading text-base font-semibold text-primary">
+                Crédit marchand
+              </h2>
+              <span className="rounded-full border border-accent/20 bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
+                Bientôt disponible
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-secondary">
+              La page Paiements reste d&apos;abord centrée sur les encaissements et les
+              règlements fournisseurs. Les options de crédit reviendront plus tard.
             </p>
-            {pendingTotal > 0 && <p className="text-xs text-muted mt-0.5">{pendingOrders?.length} unpaid orders</p>}
           </div>
         </div>
-      </div>
-
-      {creditLimit === 0 && (
-        <div className="glass-card rounded-xl p-5 border-accent/20">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl accent-gradient flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-background" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-heading text-sm font-semibold text-primary">Order Now, Pay Later</h3>
-              <p className="text-xs text-secondary mt-1 leading-relaxed">
-                Build your order history and unlock working capital. Place 5+ orders to qualify for Zando credit \u2014 restock today, pay when your goods sell.
-              </p>
-              <p className="mt-2 text-xs text-muted">No formal credit bureau needed. Your order history is your credit score.</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <h2 className="font-heading text-sm font-semibold text-primary">Credit Applications</h2>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-accent/10 text-accent border border-accent/20">{rows.length}</span>
-          </div>
-          <button className="accent-gradient btn-shine text-background text-xs font-medium px-3 py-1.5 rounded-lg">+ Apply for Credit</button>
-        </div>
-        {rows.length === 0 ? (
-          <div className="glass-card rounded-xl p-10 text-center">
-            <p className="text-secondary text-sm">No credit applications yet.</p>
-            <p className="text-xs text-muted mt-1">Place more orders to unlock working capital.</p>
-          </div>
-        ) : (
-          <DataTable columns={LOAN_COLUMNS} rows={rows} pageSize={10} searchable />
-        )}
-      </div>
+      </section>
     </div>
   );
 }
