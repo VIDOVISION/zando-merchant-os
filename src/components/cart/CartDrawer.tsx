@@ -1,9 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { formatCdf } from "@/lib/merchant-data";
+import {
+  formatCdf,
+  formatMerchantUnitQuantity,
+} from "@/lib/merchant-data";
 import { useMerchantData } from "@/components/merchant/MerchantDataContext";
 import {
+  type CartItem,
   getDraftIntentDescription,
   getDraftIntentLabel,
   useCart,
@@ -21,6 +25,23 @@ function getSupplierLabel(items: Array<{ supplier: string }>): string {
   }
 
   return "Ajoutez des articles pour définir le fournisseur";
+}
+
+function getCartItemQuantityLabel(item: CartItem): string {
+  const unitSize = item.unit_size ?? 1;
+  const displayUnitName = item.display_unit_name ?? "unit\u00e9";
+  const baseUnitName = item.base_unit_name ?? displayUnitName;
+  const quantityBase = item.quantity_base ?? item.quantity * unitSize;
+  const displayLabel = formatMerchantUnitQuantity(item.quantity, displayUnitName);
+
+  if (unitSize <= 1) {
+    return displayLabel;
+  }
+
+  return `${displayLabel} (${formatMerchantUnitQuantity(
+    quantityBase,
+    baseUnitName
+  )})`;
 }
 
 export default function CartDrawer() {
@@ -173,6 +194,9 @@ export default function CartDrawer() {
                     <p className="mt-0.5 text-xs text-muted">{item.supplier}</p>
                     <p className="mt-1 text-xs font-medium text-accent">
                       {formatCdf(item.unit_price * item.quantity)}
+                    </p>
+                    <p className="mt-1 text-xs text-secondary">
+                      {getCartItemQuantityLabel(item)}
                     </p>
                   </div>
 

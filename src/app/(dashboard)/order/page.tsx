@@ -3,15 +3,37 @@
 import Link from "next/link";
 import { useDeferredValue, useEffect, useState } from "react";
 import {
+  type CartItem,
   getDraftIntentDescription,
   getDraftIntentLabel,
   useCart,
 } from "@/components/cart/CartContext";
 import CatalogueGrid from "@/components/catalogue/CatalogueGrid";
 import { useMerchantData } from "@/components/merchant/MerchantDataContext";
-import { formatCdf, getMerchantCategoryLabel } from "@/lib/merchant-data";
+import {
+  formatCdf,
+  formatMerchantUnitQuantity,
+  getMerchantCategoryLabel,
+} from "@/lib/merchant-data";
 
 const NEW_ORDER_REVIEW_HREF = "/order-summary";
+
+function getCartItemQuantityLabel(item: CartItem): string {
+  const unitSize = item.unit_size ?? 1;
+  const displayUnitName = item.display_unit_name ?? "unit\u00e9";
+  const baseUnitName = item.base_unit_name ?? displayUnitName;
+  const quantityBase = item.quantity_base ?? item.quantity * unitSize;
+  const displayLabel = formatMerchantUnitQuantity(item.quantity, displayUnitName);
+
+  if (unitSize <= 1) {
+    return displayLabel;
+  }
+
+  return `${displayLabel} (${formatMerchantUnitQuantity(
+    quantityBase,
+    baseUnitName
+  )})`;
+}
 
 function getSupplierLabel(
   supplierNames: string[],
@@ -267,6 +289,9 @@ export default function OrderPage() {
                         </p>
                         <p className="mt-2 text-xs font-medium text-accent">
                           {formatCdf(item.unit_price * item.quantity)}
+                        </p>
+                        <p className="mt-1 text-xs text-secondary">
+                          {getCartItemQuantityLabel(item)}
                         </p>
                       </div>
 

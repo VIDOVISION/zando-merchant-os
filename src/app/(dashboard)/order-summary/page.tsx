@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
+  type CartItem,
   type CartDraftIntent,
   getDraftIntentDescription,
   getDraftIntentLabel,
@@ -11,10 +12,28 @@ import {
 import { useMerchantData } from "@/components/merchant/MerchantDataContext";
 import {
   formatCdf,
+  formatMerchantUnitQuantity,
   getMerchantOrderSourceLabel,
   getMerchantOrderStatusDescription,
   getMerchantOrderStatusLabel,
 } from "@/lib/merchant-data";
+
+function getCartItemQuantityLabel(item: CartItem): string {
+  const unitSize = item.unit_size ?? 1;
+  const displayUnitName = item.display_unit_name ?? "unit\u00e9";
+  const baseUnitName = item.base_unit_name ?? displayUnitName;
+  const quantityBase = item.quantity_base ?? item.quantity * unitSize;
+  const displayLabel = formatMerchantUnitQuantity(item.quantity, displayUnitName);
+
+  if (unitSize <= 1) {
+    return displayLabel;
+  }
+
+  return `${displayLabel} (${formatMerchantUnitQuantity(
+    quantityBase,
+    baseUnitName
+  )})`;
+}
 
 function getOrderSourceDetailFromDraftIntent(draftIntent: CartDraftIntent) {
   if (draftIntent === "low-stock-restock") {
@@ -350,6 +369,7 @@ export default function OrderSummaryPage() {
                 <div className="mt-3 flex flex-wrap gap-4 text-xs text-secondary">
                   <span>Prix unitaire {formatCdf(item.unit_price)}</span>
                   <span>Minimum {item.min_order}</span>
+                  <span>Command\u00e9 {getCartItemQuantityLabel(item)}</span>
                 </div>
               </div>
               <div className="flex flex-col gap-3 lg:items-end">

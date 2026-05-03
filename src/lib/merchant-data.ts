@@ -118,6 +118,9 @@ export interface MerchantState {
 }
 
 export interface InventoryProduct extends MerchantProduct {
+  baseUnitName: string;
+  purchaseUnitName: string;
+  purchaseUnitSize: number;
   stockStatus: MerchantStockStatus;
   onOrder: number;
 }
@@ -128,6 +131,121 @@ export const DEFAULT_MERCHANT_PROFILE: MerchantProfile = {
   neighborhood: "Masina",
   city: "Kinshasa",
 };
+
+const DEFAULT_MERCHANT_UNIT_NAME = "unit\u00e9";
+
+function normalizeMerchantUnitName(unitName: string | null | undefined): string {
+  return unitName?.trim() || DEFAULT_MERCHANT_UNIT_NAME;
+}
+
+function getMerchantUnitPlural(unitName: string, quantity: number): string {
+  const normalizedUnitName = normalizeMerchantUnitName(unitName);
+
+  if (quantity === 1 || normalizedUnitName.endsWith("s")) {
+    return normalizedUnitName;
+  }
+
+  return `${normalizedUnitName}s`;
+}
+
+function inferMerchantUnitNameFromText(value: string | null | undefined): string {
+  const normalizedValue = value?.trim().toLowerCase() ?? "";
+
+  if (normalizedValue.includes("bottle")) return "bouteille";
+  if (normalizedValue.includes("crate")) return "casier";
+  if (normalizedValue.includes("case")) return "caisse";
+  if (normalizedValue.includes("carton")) return "carton";
+  if (normalizedValue.includes("pack")) return "pack";
+  if (normalizedValue.includes("sack")) return "sac";
+  if (normalizedValue.includes("bag")) return "sac";
+  if (normalizedValue.includes("tin")) return "bo\u00eete";
+  if (normalizedValue.includes("bar")) return "barre";
+
+  return DEFAULT_MERCHANT_UNIT_NAME;
+}
+
+export function formatMerchantUnitQuantity(
+  quantity: number,
+  unitName: string
+): string {
+  return `${quantity} ${getMerchantUnitPlural(unitName, quantity)}`;
+}
+
+export function formatMerchantBaseQuantity(
+  quantityBase: number,
+  config: { baseUnitName?: string | null }
+): string {
+  return formatMerchantUnitQuantity(
+    quantityBase,
+    normalizeMerchantUnitName(config.baseUnitName)
+  );
+}
+
+export function formatMerchantPurchaseEquivalentStock(
+  quantityBase: number,
+  config: {
+    baseUnitName?: string | null;
+    purchaseUnitName?: string | null;
+    purchaseUnitSize?: number | null;
+  }
+): string {
+  const baseUnitName = normalizeMerchantUnitName(config.baseUnitName);
+  const purchaseUnitName = normalizeMerchantUnitName(config.purchaseUnitName);
+  const purchaseUnitSize = Math.max(1, Math.round(config.purchaseUnitSize ?? 1));
+
+  if (purchaseUnitSize <= 1) {
+    return formatMerchantUnitQuantity(quantityBase, baseUnitName);
+  }
+
+  const purchaseUnits = Math.floor(quantityBase / purchaseUnitSize);
+  const remainderBaseUnits = quantityBase % purchaseUnitSize;
+
+  if (purchaseUnits === 0) {
+    return formatMerchantUnitQuantity(quantityBase, baseUnitName);
+  }
+
+  const purchaseLabel = formatMerchantUnitQuantity(
+    purchaseUnits,
+    purchaseUnitName
+  );
+
+  if (remainderBaseUnits === 0) {
+    return purchaseLabel;
+  }
+
+  return `${purchaseLabel} + ${formatMerchantUnitQuantity(
+    remainderBaseUnits,
+    baseUnitName
+  )}`;
+}
+
+export function formatMerchantOrderItemQuantity(
+  item: Pick<MerchantOrderItem, "quantity" | "packSize"> & {
+    quantityBase?: number;
+    displayUnitName?: string;
+    baseUnitName?: string;
+    unitSize?: number;
+  }
+): string {
+  const unitSize = Math.max(1, Math.round(item.unitSize ?? 1));
+  const displayUnitName = normalizeMerchantUnitName(
+    item.displayUnitName ?? inferMerchantUnitNameFromText(item.packSize)
+  );
+  const baseUnitName = normalizeMerchantUnitName(
+    item.baseUnitName ?? displayUnitName
+  );
+  const quantityBase = item.quantityBase ?? item.quantity * unitSize;
+  const displayLabel = formatMerchantUnitQuantity(item.quantity, displayUnitName);
+
+  if (unitSize <= 1) {
+    return displayLabel;
+  }
+
+  return `${displayLabel} (${formatMerchantUnitQuantity(
+    quantityBase,
+    baseUnitName
+  )})`;
+}
 
 export const ORDER_STATUS_COLORS: Record<MerchantOrderStatus, string> = {
   Draft: "text-slate-200 bg-slate-500/10 border-slate-500/20",
@@ -741,6 +859,9 @@ export function buildInventoryProducts(
 
     return {
       ...product,
+      baseUnitName: inferMerchantUnitNameFromText(product.packSize),
+      purchaseUnitName: inferMerchantUnitNameFromText(product.minOrder),
+      purchaseUnitSize: 1,
       stockStatus: getStockStatus(product.stockOnHand, product.reorderPoint),
       onOrder,
     };

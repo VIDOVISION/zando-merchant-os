@@ -5,6 +5,7 @@ import {
   formatCdf,
   formatDateTime,
   formatMerchantAddress,
+  formatMerchantOrderItemQuantity,
   getMerchantOrderTotalUnits,
   isEditableMerchantOrder,
   isDeliveredMerchantOrder,
@@ -226,6 +227,9 @@ export default function OrderDetailsDrawer({
                       <p className="mt-1 text-xs text-muted">
                         Qté {item.quantity} | Prix unitaire {formatCdf(item.unitPrice)} |{" "}
                         {item.packSize}
+                      </p>
+                      <p className="mt-1 text-xs text-secondary">
+                        {formatMerchantOrderItemQuantity(item)}
                       </p>
                     </div>
                   </div>

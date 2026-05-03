@@ -567,7 +567,7 @@ function buildReceivedOrderMovements(
     }
 
     movements.push({
-      id: `movement-${order.id}-${item.productId}-received`,
+      id: crypto.randomUUID(),
       productId: item.productId,
       productName: item.name,
       reason: "order-received",

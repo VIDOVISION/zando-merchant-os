@@ -3,6 +3,8 @@
 import { useCart } from "@/components/cart/CartContext";
 import {
   formatCdf,
+  formatMerchantBaseQuantity,
+  formatMerchantPurchaseEquivalentStock,
   getMerchantCategoryLabel,
   type InventoryProduct,
 } from "@/lib/merchant-data";
@@ -73,7 +75,7 @@ export default function CatalogueGrid({
                   En stock
                 </p>
                 <p className="mt-1 text-lg font-semibold text-primary">
-                  {product.stockOnHand}
+                  {formatMerchantBaseQuantity(product.stockOnHand, product)}
                 </p>
               </div>
             </div>
@@ -82,6 +84,10 @@ export default function CatalogueGrid({
               <p>{getMerchantCategoryLabel(product.category)}</p>
               <p>
                 Conditionnement {product.packSize} | Minimum {product.minOrder}
+              </p>
+              <p>
+                Stock achat{" "}
+                {formatMerchantPurchaseEquivalentStock(product.stockOnHand, product)}
               </p>
               <p>
                 Seuil de réappro {product.reorderPoint} | En commande {product.onOrder}
@@ -128,6 +134,11 @@ export default function CatalogueGrid({
                     supplier: product.supplier,
                     unit_price: product.unitPrice,
                     min_order: product.minOrder,
+                    pack_size: product.packSize,
+                    quantity_base: product.purchaseUnitSize,
+                    display_unit_name: product.purchaseUnitName,
+                    unit_size: product.purchaseUnitSize,
+                    base_unit_name: product.baseUnitName,
                   })
                 }
                 className="accent-gradient btn-shine w-full rounded-xl py-2.5 text-sm font-medium text-background disabled:cursor-not-allowed disabled:opacity-40"

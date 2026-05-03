@@ -15,7 +15,12 @@ export interface CartItem {
   supplier: string;
   unit_price: number;
   min_order: string;
+  pack_size?: string;
   quantity: number;
+  quantity_base?: number;
+  display_unit_name?: string;
+  unit_size?: number;
+  base_unit_name?: string;
 }
 
 export type CartDraftSource = "Inventory" | "Orders" | "Home";
