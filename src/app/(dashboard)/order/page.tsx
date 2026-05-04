@@ -148,8 +148,8 @@ export default function OrderPage() {
   }, [currentDraftOrder?.status, draftOrderId, items, syncDraftOrder]);
 
   return (
-    <div className="space-y-8">
-      <section className="glass-card rounded-2xl border border-accent/20 bg-accent/5 p-5">
+    <div className="space-y-5 lg:space-y-8">
+      <section className="hidden glass-card rounded-2xl border border-accent/20 bg-accent/5 p-5 lg:block">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full border border-accent/20 bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent">
             {draftIntentLabel}
@@ -205,17 +205,17 @@ export default function OrderPage() {
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-accent/80">
             Nouveau brouillon fournisseur
           </p>
-          <h1 className="mt-2 font-heading text-3xl font-bold tracking-tight text-gradient">
+          <h1 className="mt-1 font-heading text-2xl font-bold tracking-tight text-gradient lg:mt-2 lg:text-3xl">
             Préparez et ajustez le panier fournisseur avant l'envoi
           </h1>
-          <p className="mt-2 text-sm text-secondary">
+          <p className="mt-2 hidden text-sm text-secondary sm:block">
             Voici le brouillon de travail de votre boutique. Ajoutez des
             produits, ajustez les quantités, puis vérifiez et confirmez quand le
             panier est prêt.
           </p>
         </div>
 
-        <div className="glass-card w-full max-w-md rounded-2xl p-5">
+        <div className="glass-card w-full max-w-md rounded-2xl p-4 lg:p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-muted">
@@ -230,11 +230,11 @@ export default function OrderPage() {
             </span>
           </div>
 
-          <div className="mt-4 rounded-2xl border border-border bg-surface/50 p-4">
+          <div className="mt-4 rounded-xl border border-border bg-surface/50 p-3 lg:rounded-2xl lg:p-4">
             <div className="flex items-center justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-muted">Fournisseur</p>
-                <p className="mt-1 text-sm font-medium text-primary">
+                <p className="mt-1 truncate text-sm font-medium text-primary">
                   {supplierLabel}
                 </p>
               </div>
@@ -279,7 +279,7 @@ export default function OrderPage() {
           <div className="mt-4 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-primary">Lignes du brouillon</p>
-                <p className="text-xs text-muted">
+                <p className="hidden text-xs text-muted sm:block">
                   Ajustez les quantités avant confirmation
                 </p>
               </div>
@@ -292,18 +292,18 @@ export default function OrderPage() {
                 </p>
               </div>
             ) : (
-              <div className="max-h-[340px] space-y-3 overflow-y-auto pr-1">
+              <div className="max-h-[280px] space-y-2 overflow-y-auto pr-1 lg:max-h-[340px] lg:space-y-3">
                 {items.map((item) => (
                   <div
                     key={item.id}
-                    className="rounded-2xl border border-border bg-surface/50 p-4"
+                    className="rounded-xl border border-border bg-surface/50 p-3 lg:rounded-2xl lg:p-4"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-primary">
                           {item.name}
                         </p>
-                        <p className="mt-1 text-xs text-muted">
+                        <p className="mt-1 truncate text-xs text-muted">
                           {item.supplier}
                         </p>
                         <p className="mt-2 text-xs font-medium text-accent">
@@ -341,8 +341,8 @@ export default function OrderPage() {
                       </button>
                     </div>
 
-                    <div className="mt-4 flex items-center justify-between gap-3">
-                      <div className="text-xs text-secondary">
+                    <div className="mt-3 flex items-center justify-between gap-3 lg:mt-4">
+                      <div className="min-w-0 text-xs text-secondary">
                         Qté achat {item.quantity} | Minimum{" "}
                         {formatMerchantMinimumPurchaseQuantity(item.min_order, {
                           purchaseUnitName: item.display_unit_name,
@@ -374,10 +374,10 @@ export default function OrderPage() {
             )}
           </div>
 
-          <div className="mt-5 flex gap-3">
+          <div className="mt-5 grid gap-3 sm:flex">
             <Link
               href={NEW_ORDER_REVIEW_HREF}
-              className={`flex-1 rounded-xl px-4 py-2.5 text-center text-sm font-medium transition-colors ${
+              className={`rounded-xl px-4 py-3 text-center text-sm font-medium transition-colors sm:flex-1 sm:py-2.5 ${
                 items.length === 0
                   ? "pointer-events-none border border-border text-muted"
                   : "accent-gradient btn-shine text-background"
@@ -389,7 +389,7 @@ export default function OrderPage() {
               type="button"
               onClick={handleLoadLastSupplierBasket}
               disabled={!lastSuccessfulOrder}
-              className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-xl border border-border px-4 py-3 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 sm:py-2.5"
             >
               Relancer le dernier panier
             </button>
@@ -398,7 +398,7 @@ export default function OrderPage() {
       </section>
 
       {lastSuccessfulOrder && (
-        <section className="glass-card rounded-2xl p-5">
+        <section className="hidden glass-card rounded-2xl p-5 sm:block">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-accent/80">
@@ -426,20 +426,20 @@ export default function OrderPage() {
         </section>
       )}
 
-      <section className="glass-card rounded-2xl p-5">
+      <section className="glass-card rounded-2xl p-4 lg:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <h2 className="font-heading text-lg font-semibold text-primary">
               Catalogue
             </h2>
-            <p className="mt-1 text-sm text-secondary">
+            <p className="mt-1 hidden text-sm text-secondary sm:block">
               Catalogue boutique pour les boissons, produits de base, épicerie
               et entretien.
             </p>
           </div>
 
           <div className="flex flex-col gap-3 lg:flex-row">
-            <label className="relative block min-w-[260px]">
+            <label className="relative block w-full lg:min-w-[260px]">
               <span className="sr-only">Rechercher dans le catalogue</span>
               <svg
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
