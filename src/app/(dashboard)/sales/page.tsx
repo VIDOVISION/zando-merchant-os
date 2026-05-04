@@ -612,16 +612,16 @@ export default function SalesPage() {
   );
 
   return (
-    <div className="flex flex-col gap-8">
-      <section className="order-1 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="flex flex-col gap-5 lg:gap-8">
+      <section className="order-1 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-accent/80">
             Ventes
           </p>
-          <h1 className="mt-2 font-heading text-3xl font-bold tracking-tight text-gradient">
+          <h1 className="mt-1 font-heading text-2xl font-bold tracking-tight text-gradient lg:mt-2 lg:text-3xl">
             Enregistrez vite les ventes du magasin
           </h1>
-          <p className="mt-2 max-w-3xl text-sm text-secondary">
+          <p className="mt-2 hidden max-w-3xl text-sm text-secondary sm:block">
             Pensé pour le commerce de quartier à {state.profile.neighborhood},{" "}
             {state.profile.city}. Recherchez ce qui est déjà en stock, ajoutez vite
             un article manquant, et gardez un stock juste en CDF.
@@ -797,86 +797,86 @@ export default function SalesPage() {
         </div>
       </section>
 
-      <section className="order-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">
+      <section className="order-3 grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div className="glass-card rounded-xl p-3 lg:rounded-2xl lg:p-4">
+          <p className="truncate text-xs text-muted">
             {todaySales.length > 0 ? "Ventes du jour" : "Ventes des 7 derniers jours"}
           </p>
-          <p className="mt-2 font-heading text-3xl font-bold text-accent">
+          <p className="mt-1 truncate font-heading text-xl font-bold text-accent lg:mt-2 lg:text-3xl">
             {formatCdf(quickSalesValue)}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Vue rapide pour {quickRangeLabel}
           </p>
         </div>
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">
+        <div className="glass-card rounded-xl p-3 lg:rounded-2xl lg:p-4">
+          <p className="truncate text-xs text-muted">
             {todaySales.length > 0
               ? "Quantités vendues aujourd’hui"
               : "Quantités vendues sur 7 jours"}
           </p>
-          <p className="mt-2 font-heading text-3xl font-bold text-primary">
+          <p className="mt-1 font-heading text-xl font-bold text-primary lg:mt-2 lg:text-3xl">
             {quickSalesUnits}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Ce qui est passé au comptoir
           </p>
         </div>
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">
+        <div className="glass-card rounded-xl p-3 lg:rounded-2xl lg:p-4">
+          <p className="truncate text-xs text-muted">
             {todaySales.length > 0
               ? "Produit le plus vendu aujourd’hui"
               : "Produit le plus vendu sur 7 jours"}
           </p>
-          <p className="mt-2 font-heading text-2xl font-bold text-primary">
+          <p className="mt-1 truncate font-heading text-lg font-bold text-primary lg:mt-2 lg:text-2xl">
             {quickTopSellingSummary[0]?.productName ?? "Aucune vente pour le moment"}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             {quickTopSellingSummary[0]
               ? `${quickTopSellingSummary[0].unitsSold} unités vendues ${quickRangeLabel}`
               : "Le produit qui sort le plus s'affiche ici"}
           </p>
         </div>
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">
+        <div className="glass-card rounded-xl p-3 lg:rounded-2xl lg:p-4">
+          <p className="truncate text-xs text-muted">
             {todaySales.length > 0
               ? "Ventes enregistrées du jour"
               : "Ventes enregistrées sur 7 jours"}
           </p>
-          <p className="mt-2 font-heading text-3xl font-bold text-amber-300">
+          <p className="mt-1 font-heading text-xl font-bold text-amber-300 lg:mt-2 lg:text-3xl">
             {quickSales.length}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Enregistrées pour la vue rapide
           </p>
         </div>
       </section>
 
       <section className="contents">
-        <div className="order-2 glass-card rounded-2xl p-5">
+        <div className="order-2 glass-card rounded-2xl p-4 lg:p-5">
           <div>
             <h2 className="font-heading text-lg font-semibold text-primary">
               Enregistrer une vente
             </h2>
-            <p className="mt-1 text-sm text-secondary">
+            <p className="mt-1 hidden text-sm text-secondary sm:block">
               Recherchez d'abord dans le stock. Si l'article manque, ajoutez-le vite
               et enregistrez la vente dans le même passage.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+          <form onSubmit={handleSubmit} className="mt-4 space-y-3 lg:mt-5 lg:space-y-4">
             {beverageQuickPickProducts.length > 0 ? (
-              <div className="rounded-2xl border border-border bg-surface/45 p-4">
-                <div className="flex flex-col gap-1">
+              <div className="rounded-xl border border-border bg-surface/45 p-3 lg:rounded-2xl lg:p-4">
+                <div className="flex items-center justify-between gap-3">
                   <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted">
-                    Ventes rapides boissons
+                    Raccourcis
                   </p>
-                  <p className="text-sm text-secondary">
+                  <p className="hidden text-sm text-secondary sm:block">
                     Touchez une boisson fréquente pour préparer la vente plus vite.
                   </p>
                 </div>
 
-                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <div className="mt-3 flex snap-x gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0">
                   {beverageQuickPickProducts.map((product) => {
                     const isSelected = selectedProduct?.id === product.id;
 
@@ -885,7 +885,7 @@ export default function SalesPage() {
                         key={product.id}
                         type="button"
                         onClick={() => handleSelectProduct(product.id)}
-                        className={`rounded-2xl border px-4 py-3 text-left transition-colors ${
+                        className={`min-w-[168px] snap-start rounded-xl border px-3 py-2.5 text-left transition-colors sm:min-w-0 sm:rounded-2xl sm:px-4 sm:py-3 ${
                           isSelected
                             ? "border-accent/40 bg-accent/10"
                             : "border-border bg-background/40 hover:border-accent/25 hover:bg-surface-bright"
@@ -897,7 +897,7 @@ export default function SalesPage() {
                         <p className="mt-1 text-xs text-muted">
                           {formatMerchantBaseQuantity(product.stockOnHand, product)} en stock | {product.supplier}
                         </p>
-                        <p className="mt-2 text-xs font-medium text-accent">
+                        <p className="mt-1 text-xs font-medium text-accent sm:mt-2">
                           {formatCdf(product.sellingPrice * product.saleUnitSize)}
                         </p>
                       </button>
@@ -1097,7 +1097,7 @@ export default function SalesPage() {
               </div>
             )}
 
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted">
                   Quantité{selectedProduct ? ` (${selectedProduct.saleUnitName})` : ""}
@@ -1133,7 +1133,7 @@ export default function SalesPage() {
                 )}
               </label>
 
-              <label className="block">
+              <label className="col-span-2 block md:col-span-1">
                 <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted">
                   Mode de paiement
                 </span>
@@ -1152,7 +1152,7 @@ export default function SalesPage() {
                 </select>
               </label>
 
-              <label className="block">
+              <label className="col-span-2 block md:col-span-1">
                 <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted">
                   Heure
                 </span>
@@ -1165,7 +1165,7 @@ export default function SalesPage() {
               </label>
             </div>
 
-            <div className="rounded-2xl border border-accent/20 bg-accent/10 px-4 py-3">
+            <div className="rounded-xl border border-accent/20 bg-accent/10 px-4 py-3 lg:rounded-2xl">
               <p className="text-xs uppercase tracking-[0.2em] text-muted">
                 Total de la vente
               </p>
