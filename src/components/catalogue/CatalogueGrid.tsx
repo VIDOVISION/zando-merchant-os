@@ -38,7 +38,6 @@ export default function CatalogueGrid({
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       {products.map((product) => {
         const currentQty = getCartQty(product.id);
-        const outOfStock = product.stockStatus === "Out of Stock";
 
         return (
           <div
@@ -129,7 +128,6 @@ export default function CatalogueGrid({
             ) : (
               <button
                 type="button"
-                disabled={outOfStock}
                 onClick={() =>
                   addItem({
                     id: product.id,
@@ -144,9 +142,9 @@ export default function CatalogueGrid({
                     base_unit_name: product.baseUnitName,
                   })
                 }
-                className="accent-gradient btn-shine w-full rounded-xl py-2.5 text-sm font-medium text-background disabled:cursor-not-allowed disabled:opacity-40"
+                className="accent-gradient btn-shine w-full rounded-xl py-2.5 text-sm font-medium text-background"
               >
-                {outOfStock ? "Indisponible" : "Ajouter au brouillon"}
+                Ajouter au brouillon
               </button>
             )}
           </div>
