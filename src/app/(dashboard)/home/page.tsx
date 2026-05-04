@@ -12,6 +12,8 @@ import { useMerchantData } from "@/components/merchant/MerchantDataContext";
 import {
   ORDER_STATUS_COLORS,
   formatCdf,
+  formatMerchantBaseQuantity,
+  formatMerchantUnitQuantity,
   getMerchantOrderItemPreview,
   getMerchantOrderTotalUnits,
   isEditableMerchantOrder,
@@ -410,13 +412,20 @@ export default function HomePage() {
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-muted">
-                        {product.stockOnHand} en stock | réappro {product.reorderQuantity} |{" "}
+                        {formatMerchantBaseQuantity(product.stockOnHand, product)} en stock | réappro{" "}
+                        {formatMerchantUnitQuantity(
+                          product.reorderQuantity,
+                          product.purchaseUnitName
+                        )} |{" "}
                         {product.supplier}
                       </p>
                       {salesRiskByProductId.get(product.id) ? (
                         <p className="mt-2 text-xs text-secondary">
                           {salesRiskByProductId.get(product.id)?.quantitySold} vendu{salesRiskByProductId.get(product.id)?.quantitySold === 1 ? "" : "s"} récemment, il ne reste que{" "}
-                          {salesRiskByProductId.get(product.id)?.stockAfterSale}.
+                          {formatMerchantBaseQuantity(
+                            salesRiskByProductId.get(product.id)?.stockAfterSale ?? 0,
+                            product
+                          )}.
                         </p>
                       ) : null}
                     </div>

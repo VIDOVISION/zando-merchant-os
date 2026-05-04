@@ -4,7 +4,9 @@ import { useCart } from "@/components/cart/CartContext";
 import {
   formatCdf,
   formatMerchantBaseQuantity,
+  formatMerchantMinimumPurchaseQuantity,
   formatMerchantPurchaseEquivalentStock,
+  formatMerchantPurchaseUnitDefinition,
   getMerchantCategoryLabel,
   type InventoryProduct,
 } from "@/lib/merchant-data";
@@ -64,7 +66,7 @@ export default function CatalogueGrid({
             <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-surface/50 p-3">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
-                  Prix
+                  Prix achat
                 </p>
                 <p className="mt-1 text-lg font-semibold text-accent">
                   {formatCdf(product.unitPrice)}
@@ -83,7 +85,8 @@ export default function CatalogueGrid({
             <div className="space-y-1 text-xs text-secondary">
               <p>{getMerchantCategoryLabel(product.category)}</p>
               <p>
-                Conditionnement {product.packSize} | Minimum {product.minOrder}
+                Conditionnement {formatMerchantPurchaseUnitDefinition(product)} | Minimum{" "}
+                {formatMerchantMinimumPurchaseQuantity(product.minOrder, product)}
               </p>
               <p>
                 Stock achat{" "}

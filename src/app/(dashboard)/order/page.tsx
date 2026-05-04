@@ -12,27 +12,46 @@ import CatalogueGrid from "@/components/catalogue/CatalogueGrid";
 import { useMerchantData } from "@/components/merchant/MerchantDataContext";
 import {
   formatCdf,
+  formatMerchantMinimumPurchaseQuantity,
   formatMerchantUnitQuantity,
   getMerchantCategoryLabel,
+  inferMerchantProductUnitConfig,
 } from "@/lib/merchant-data";
 
 const NEW_ORDER_REVIEW_HREF = "/order-summary";
 
-function getCartItemQuantityLabel(item: CartItem): string {
-  const unitSize = item.unit_size ?? 1;
-  const displayUnitName = item.display_unit_name ?? "unit\u00e9";
-  const baseUnitName = item.base_unit_name ?? displayUnitName;
-  const quantityBase = item.quantity_base ?? item.quantity * unitSize;
-  const displayLabel = formatMerchantUnitQuantity(item.quantity, displayUnitName);
+function getCartItemPurchaseLabel(item: CartItem): string {
+  const inferredConfig = inferMerchantProductUnitConfig({
+    packSize: item.pack_size ?? item.min_order,
+    minOrder: item.min_order,
+    purchaseUnitName: item.display_unit_name,
+  });
 
-  if (unitSize <= 1) {
-    return displayLabel;
+  return formatMerchantUnitQuantity(
+    item.quantity,
+    item.display_unit_name ?? inferredConfig.purchaseUnitName
+  );
+}
+
+function getCartItemStockEquivalentLabel(item: CartItem): string | null {
+  const inferredConfig = inferMerchantProductUnitConfig({
+    packSize: item.pack_size ?? item.min_order,
+    minOrder: item.min_order,
+    baseUnitName: item.base_unit_name,
+    purchaseUnitName: item.display_unit_name,
+    purchaseUnitSize: item.unit_size,
+  });
+  const unitSize = item.unit_size ?? inferredConfig.purchaseUnitSize;
+  const quantityBase = item.quantity * unitSize;
+
+  if (!quantityBase || quantityBase <= item.quantity) {
+    return null;
   }
 
-  return `${displayLabel} (${formatMerchantUnitQuantity(
+  return `${getCartItemPurchaseLabel(item)} = ${formatMerchantUnitQuantity(
     quantityBase,
-    baseUnitName
-  )})`;
+    item.base_unit_name ?? inferredConfig.baseUnitName
+  )} au stock`;
 }
 
 function getSupplierLabel(
@@ -162,7 +181,7 @@ export default function OrderPage() {
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-surface/50 p-4">
-            <p className="text-xs text-muted">Unités du brouillon</p>
+            <p className="text-xs text-muted">Quantité achat</p>
             <p className="mt-2 font-heading text-3xl font-bold text-primary">
               {totalItems}
             </p>
@@ -240,7 +259,7 @@ export default function OrderPage() {
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
-                  Unités
+                  Qté achat
                 </p>
                 <p className="mt-1 text-lg font-semibold text-primary">
                   {totalItems}
@@ -291,8 +310,13 @@ export default function OrderPage() {
                           {formatCdf(item.unit_price * item.quantity)}
                         </p>
                         <p className="mt-1 text-xs text-secondary">
-                          {getCartItemQuantityLabel(item)}
+                          Quantité achat : {getCartItemPurchaseLabel(item)}
                         </p>
+                        {getCartItemStockEquivalentLabel(item) ? (
+                          <p className="mt-1 text-xs text-muted">
+                            {getCartItemStockEquivalentLabel(item)}
+                          </p>
+                        ) : null}
                       </div>
 
                       <button
@@ -319,7 +343,10 @@ export default function OrderPage() {
 
                     <div className="mt-4 flex items-center justify-between gap-3">
                       <div className="text-xs text-secondary">
-                        Qté {item.quantity} | Minimum {item.min_order}
+                        Qté achat {item.quantity} | Minimum{" "}
+                        {formatMerchantMinimumPurchaseQuantity(item.min_order, {
+                          purchaseUnitName: item.display_unit_name,
+                        })}
                       </div>
                       <div className="flex items-center gap-2 rounded-xl border border-border px-2 py-1.5">
                         <button

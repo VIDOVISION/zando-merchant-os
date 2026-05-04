@@ -46,6 +46,12 @@ export interface MerchantProduct {
   leadTimeDays: number;
   lastRestockedAt: string;
   isActive: boolean;
+  baseUnitName?: string;
+  purchaseUnitName?: string;
+  purchaseUnitSize?: number;
+  saleUnitName?: string;
+  saleUnitSize?: number;
+  unitSchemaVersion?: number;
 }
 
 export interface MerchantOrderItem {
@@ -55,6 +61,10 @@ export interface MerchantOrderItem {
   quantity: number;
   unitPrice: number;
   packSize: string;
+  quantityBase?: number;
+  displayUnitName?: string;
+  unitSize?: number;
+  baseUnitName?: string;
 }
 
 export interface MerchantOrder {
@@ -95,6 +105,9 @@ export interface MerchantSale {
   stockAfterSale: number;
   triggeredLowStock: boolean;
   quickAddedProduct?: boolean;
+  quantityBase?: number;
+  displayUnitName?: string;
+  unitSize?: number;
 }
 
 export interface MerchantInventoryMovement {
@@ -106,6 +119,9 @@ export interface MerchantInventoryMovement {
   stockAfter: number;
   note?: string;
   createdAt: string;
+  displayQuantity?: number;
+  displayUnitName?: string;
+  unitSize?: number;
 }
 
 export interface MerchantState {
@@ -121,6 +137,8 @@ export interface InventoryProduct extends MerchantProduct {
   baseUnitName: string;
   purchaseUnitName: string;
   purchaseUnitSize: number;
+  saleUnitName: string;
+  saleUnitSize: number;
   stockStatus: MerchantStockStatus;
   onOrder: number;
 }
@@ -151,6 +169,15 @@ function getMerchantUnitPlural(unitName: string, quantity: number): string {
 function inferMerchantUnitNameFromText(value: string | null | undefined): string {
   const normalizedValue = value?.trim().toLowerCase() ?? "";
 
+  if (normalizedValue.includes("bouteille")) return "bouteille";
+  if (normalizedValue.includes("casier")) return "casier";
+  if (normalizedValue.includes("caisse")) return "caisse";
+  if (normalizedValue.includes("carton")) return "carton";
+  if (normalizedValue.includes("sac")) return "sac";
+  if (normalizedValue.includes("bidon")) return "bidon";
+  if (normalizedValue.includes("boite")) return "bo\u00eete";
+  if (normalizedValue.includes("bo\u00eete")) return "bo\u00eete";
+  if (normalizedValue.includes("barre")) return "barre";
   if (normalizedValue.includes("bottle")) return "bouteille";
   if (normalizedValue.includes("crate")) return "casier";
   if (normalizedValue.includes("case")) return "caisse";
@@ -162,6 +189,225 @@ function inferMerchantUnitNameFromText(value: string | null | undefined): string
   if (normalizedValue.includes("bar")) return "barre";
 
   return DEFAULT_MERCHANT_UNIT_NAME;
+}
+
+export function normalizeMerchantPackCountLabel(value: string): string {
+  return value
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(
+      /\s+\d+\s*(?:x|\u00d7)\s*([0-9]+(?:[.,]\d+)?\s*(?:kg|g|ml|cl|l))\b/gi,
+      " $1"
+    )
+    .replace(
+      /\s+\d+\s*-\s*(?:bottle|bottles|tin|tins|pack|packs|bar|bars)\s+(?:carton|case|crate|pack|bale)\b/gi,
+      ""
+    )
+    .replace(/\s+\d+\s*(?:x|\u00d7)\s*/gi, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+export function normalizeMerchantProductName(name: string): string {
+  return normalizeMerchantPackCountLabel(name);
+}
+
+type MerchantUnitConfig = Required<
+  Pick<
+    MerchantProduct,
+    | "baseUnitName"
+    | "purchaseUnitName"
+    | "purchaseUnitSize"
+    | "saleUnitName"
+    | "saleUnitSize"
+  >
+>;
+
+function getPositiveUnitSize(value: number | null | undefined): number {
+  return Math.max(1, Math.round(value ?? 1));
+}
+
+function parseMerchantPackSize(value: string | null | undefined): number {
+  const normalizedValue = value?.trim().toLowerCase() ?? "";
+  const match =
+    normalizedValue.match(
+      /(\d+)\s*(?:-|x|\u00d7)?\s*(?:bottle|bottles|bouteille|bouteilles|tin|tins|boite|boites|bo\u00eete|bo\u00eetes|pack|packs|bar|bars|barre|barres)\b/
+    ) ??
+    normalizedValue.match(
+      /(?:de|of)\s+(\d+)\s+(?:bottle|bottles|bouteille|bouteilles|tin|tins|boite|boites|bo\u00eete|bo\u00eetes|pack|packs|bar|bars|barre|barres)\b/
+    );
+
+  if (!match?.[1]) {
+    return 1;
+  }
+
+  const parsedSize = Number.parseInt(match[1], 10);
+  return Number.isFinite(parsedSize) && parsedSize > 1 ? parsedSize : 1;
+}
+
+function parseMerchantQuantityPrefix(value: string | null | undefined): number {
+  const match = value?.trim().match(/^(\d+)/);
+  if (!match?.[1]) return 1;
+
+  const parsedQuantity = Number.parseInt(match[1], 10);
+  return Number.isFinite(parsedQuantity) && parsedQuantity > 0
+    ? parsedQuantity
+    : 1;
+}
+
+function inferMerchantBaseUnitNameFromPack(
+  packSize: string | null | undefined
+): string {
+  const normalizedValue = packSize?.trim().toLowerCase() ?? "";
+
+  if (
+    normalizedValue.includes("bottle") ||
+    normalizedValue.includes("bouteille")
+  ) {
+    return "bouteille";
+  }
+
+  if (
+    normalizedValue.includes("tin") ||
+    normalizedValue.includes("boite") ||
+    normalizedValue.includes("bo\u00eete")
+  ) {
+    return "bo\u00eete";
+  }
+
+  if (normalizedValue.includes("bar") || normalizedValue.includes("barre")) {
+    return "barre";
+  }
+
+  if (normalizedValue.includes("pack") || normalizedValue.includes("paquet")) {
+    return "paquet";
+  }
+
+  return inferMerchantUnitNameFromText(packSize);
+}
+
+function inferMerchantPurchaseUnitNameFromPack(
+  packSize: string | null | undefined,
+  minOrder: string | null | undefined
+): string {
+  const combinedValue = `${packSize ?? ""} ${minOrder ?? ""}`.toLowerCase();
+
+  if (combinedValue.includes("crate") || combinedValue.includes("casier")) {
+    return "casier";
+  }
+
+  if (combinedValue.includes("case") || combinedValue.includes("caisse")) {
+    return "caisse";
+  }
+
+  if (combinedValue.includes("carton")) {
+    return "carton";
+  }
+
+  if (combinedValue.includes("bale") || combinedValue.includes("ballot")) {
+    return "ballot";
+  }
+
+  if (combinedValue.includes("pack")) {
+    return "pack";
+  }
+
+  if (combinedValue.includes("sack") || combinedValue.includes("bag")) {
+    return "sac";
+  }
+
+  if (combinedValue.includes("jerrycan") || combinedValue.includes("bidon")) {
+    return "bidon";
+  }
+
+  return inferMerchantUnitNameFromText(minOrder ?? packSize);
+}
+
+export function inferMerchantProductUnitConfig(
+  product: Pick<MerchantProduct, "packSize" | "minOrder"> &
+    Partial<Pick<MerchantProduct, "baseUnitName" | "purchaseUnitName" | "purchaseUnitSize" | "saleUnitName" | "saleUnitSize">>
+): MerchantUnitConfig {
+  const inferredPackSize = parseMerchantPackSize(product.packSize);
+  const baseUnitName = normalizeMerchantUnitName(
+    product.baseUnitName ??
+      (inferredPackSize > 1
+        ? inferMerchantBaseUnitNameFromPack(product.packSize)
+        : inferMerchantUnitNameFromText(product.packSize))
+  );
+  const purchaseUnitName = normalizeMerchantUnitName(
+    product.purchaseUnitName ??
+      (inferredPackSize > 1
+        ? inferMerchantPurchaseUnitNameFromPack(
+            product.packSize,
+            product.minOrder
+          )
+        : inferMerchantUnitNameFromText(product.minOrder ?? product.packSize))
+  );
+  const purchaseUnitSize = getPositiveUnitSize(
+    product.purchaseUnitSize && product.purchaseUnitSize > 1
+      ? product.purchaseUnitSize
+      : inferredPackSize
+  );
+  const saleUnitName = normalizeMerchantUnitName(
+    product.saleUnitName ?? baseUnitName
+  );
+  const saleUnitSize = getPositiveUnitSize(product.saleUnitSize);
+
+  return {
+    baseUnitName,
+    purchaseUnitName,
+    purchaseUnitSize,
+    saleUnitName,
+    saleUnitSize,
+  };
+}
+
+export function normalizeMerchantProductUnits(
+  product: MerchantProduct
+): MerchantProduct & MerchantUnitConfig {
+  const unitConfig = inferMerchantProductUnitConfig(product);
+
+  return {
+    ...product,
+    name: normalizeMerchantProductName(product.name),
+    ...unitConfig,
+    unitSchemaVersion: product.unitSchemaVersion ?? 1,
+  };
+}
+
+export function convertMerchantPurchaseQuantityToBase(
+  quantity: number,
+  product: Pick<MerchantProduct, "packSize" | "minOrder"> &
+    Partial<Pick<MerchantProduct, "purchaseUnitSize">>
+): number {
+  return Math.round(quantity) * inferMerchantProductUnitConfig(product).purchaseUnitSize;
+}
+
+export function convertMerchantSaleQuantityToBase(
+  quantity: number,
+  product: Pick<MerchantProduct, "packSize" | "minOrder"> &
+    Partial<Pick<MerchantProduct, "saleUnitSize">>
+): number {
+  return Math.round(quantity) * inferMerchantProductUnitConfig(product).saleUnitSize;
+}
+
+export function getMerchantOrderItemBaseQuantity(
+  item: Pick<MerchantOrderItem, "quantity" | "packSize"> &
+    Partial<
+      Pick<
+        MerchantOrderItem,
+        "quantityBase" | "unitSize" | "displayUnitName" | "baseUnitName"
+      >
+    >
+): number {
+  const unitSize = getPositiveUnitSize(
+    item.unitSize ?? inferMerchantProductUnitConfig({
+      packSize: item.packSize,
+      minOrder: item.packSize,
+    }).purchaseUnitSize
+  );
+
+  return item.quantityBase ?? Math.round(item.quantity) * unitSize;
 }
 
 export function formatMerchantUnitQuantity(
@@ -219,6 +465,37 @@ export function formatMerchantPurchaseEquivalentStock(
   )}`;
 }
 
+export function formatMerchantPurchaseUnitDefinition(config: {
+  baseUnitName?: string | null;
+  purchaseUnitName?: string | null;
+  purchaseUnitSize?: number | null;
+}): string {
+  const purchaseUnitSize = getPositiveUnitSize(config.purchaseUnitSize);
+  const purchaseUnitName = normalizeMerchantUnitName(config.purchaseUnitName);
+  const baseUnitName = normalizeMerchantUnitName(config.baseUnitName);
+
+  if (purchaseUnitSize <= 1 || purchaseUnitName === baseUnitName) {
+    return purchaseUnitName;
+  }
+
+  return `1 ${purchaseUnitName} = ${formatMerchantUnitQuantity(
+    purchaseUnitSize,
+    baseUnitName
+  )}`;
+}
+
+export function formatMerchantMinimumPurchaseQuantity(
+  minOrder: string,
+  config: {
+    purchaseUnitName?: string | null;
+  }
+): string {
+  return formatMerchantUnitQuantity(
+    parseMerchantQuantityPrefix(minOrder),
+    normalizeMerchantUnitName(config.purchaseUnitName)
+  );
+}
+
 export function formatMerchantOrderItemQuantity(
   item: Pick<MerchantOrderItem, "quantity" | "packSize"> & {
     quantityBase?: number;
@@ -227,12 +504,19 @@ export function formatMerchantOrderItemQuantity(
     unitSize?: number;
   }
 ): string {
-  const unitSize = Math.max(1, Math.round(item.unitSize ?? 1));
+  const inferredConfig = inferMerchantProductUnitConfig({
+    packSize: item.packSize,
+    minOrder: item.packSize,
+  });
+  const unitSize = Math.max(
+    1,
+    Math.round(item.unitSize ?? inferredConfig.purchaseUnitSize)
+  );
   const displayUnitName = normalizeMerchantUnitName(
-    item.displayUnitName ?? inferMerchantUnitNameFromText(item.packSize)
+    item.displayUnitName ?? inferredConfig.purchaseUnitName
   );
   const baseUnitName = normalizeMerchantUnitName(
-    item.baseUnitName ?? displayUnitName
+    item.baseUnitName ?? inferredConfig.baseUnitName
   );
   const quantityBase = item.quantityBase ?? item.quantity * unitSize;
   const displayLabel = formatMerchantUnitQuantity(item.quantity, displayUnitName);
@@ -461,7 +745,7 @@ export function getMerchantCategoryLabel(category: string): string {
 
 export function getMerchantOrderTotalUnits(order: Pick<MerchantOrder, "items">): number {
   return order.items.reduce(
-    (runningTotal, item) => runningTotal + item.quantity,
+    (runningTotal, item) => runningTotal + getMerchantOrderItemBaseQuantity(item),
     0
   );
 }
@@ -472,7 +756,7 @@ export function getMerchantOrderItemPreview(
 ): string[] {
   return order.items
     .slice(0, limit)
-    .map((item) => `${item.name} x${item.quantity}`);
+    .map((item) => `${item.name} - ${formatMerchantOrderItemQuantity(item)}`);
 }
 
 export function formatMerchantAddress(address: string): string {
@@ -559,7 +843,38 @@ function withDays(dateString: string, days: number): string {
   return nextDate.toISOString();
 }
 
-const SEEDED_PRODUCTS: MerchantProduct[] = [
+type SeededProductInput = Omit<
+  MerchantProduct,
+  | "baseUnitName"
+  | "purchaseUnitName"
+  | "purchaseUnitSize"
+  | "saleUnitName"
+  | "saleUnitSize"
+  | "unitSchemaVersion"
+>;
+
+function buildSeedProduct(input: SeededProductInput): MerchantProduct {
+  const unitConfig = inferMerchantProductUnitConfig(input);
+  const shouldConvertPackValues = unitConfig.purchaseUnitSize > 1;
+
+  return {
+    ...input,
+    name: normalizeMerchantProductName(input.name),
+    sellingPrice: shouldConvertPackValues
+      ? Math.max(1, Math.round(input.sellingPrice / unitConfig.purchaseUnitSize))
+      : input.sellingPrice,
+    stockOnHand: shouldConvertPackValues
+      ? input.stockOnHand * unitConfig.purchaseUnitSize
+      : input.stockOnHand,
+    reorderPoint: shouldConvertPackValues
+      ? input.reorderPoint * unitConfig.purchaseUnitSize
+      : input.reorderPoint,
+    ...unitConfig,
+    unitSchemaVersion: 1,
+  };
+}
+
+const SEEDED_PRODUCT_INPUTS: SeededProductInput[] = [
   {
     id: "riz-bella-25kg",
     sku: "KIN-STP-001",
@@ -635,7 +950,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
   {
     id: "tomate-tmt-48",
     sku: "KIN-PAN-034",
-    name: "TMT Tomato Paste 48 x 70g",
+    name: "TMT Tomato Paste 70g",
     category: "Pantry",
     supplier: "Marche Gambela Cash & Carry",
     neighborhood: "Gombe",
@@ -653,7 +968,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
   {
     id: "sel-io-25",
     sku: "KIN-PAN-041",
-    name: "Sel Iode 25 x 500g",
+    name: "Sel Iode 500g",
     category: "Pantry",
     supplier: "Kintambo Pantry Depot",
     neighborhood: "Kintambo",
@@ -671,7 +986,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
   {
     id: "fanta-orange-24",
     sku: "KIN-BEV-005",
-    name: "Fanta Orange 24 x 50cl",
+    name: "Fanta Orange 50cl",
     category: "Beverages",
     supplier: "Bandal Beverage Hub",
     neighborhood: "Bandalungwa",
@@ -689,7 +1004,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
   {
     id: "coca-cola-24",
     sku: "KIN-BEV-002",
-    name: "Coca-Cola 24 x 50cl",
+    name: "Coca-Cola 50cl",
     category: "Beverages",
     supplier: "Bandal Beverage Hub",
     neighborhood: "Bandalungwa",
@@ -707,7 +1022,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
   {
     id: "primus-12",
     sku: "KIN-BEV-019",
-    name: "Primus 12 x 72cl",
+    name: "Primus 72cl",
     category: "Beverages",
     supplier: "Ngaliema Drinks Depot",
     neighborhood: "Ngaliema",
@@ -725,7 +1040,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
   {
     id: "vitalo-water-30",
     sku: "KIN-BEV-027",
-    name: "Vitalo Water 30 x 500ml",
+    name: "Vitalo Water 500ml",
     category: "Beverages",
     supplier: "Bandal Beverage Hub",
     neighborhood: "Bandalungwa",
@@ -743,7 +1058,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
   {
     id: "omo-powder-24",
     sku: "KIN-HOM-012",
-    name: "Omo Powder 24 x 900g",
+    name: "Omo Powder 900g",
     category: "Home Care",
     supplier: "Ngaba Homecare Supply",
     neighborhood: "Ngaba",
@@ -761,7 +1076,7 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
   {
     id: "savon-mama-48",
     sku: "KIN-HOM-016",
-    name: "Savon Mama 48-bar Carton",
+    name: "Savon Mama",
     category: "Home Care",
     supplier: "Ngaba Homecare Supply",
     neighborhood: "Ngaba",
@@ -777,6 +1092,10 @@ const SEEDED_PRODUCTS: MerchantProduct[] = [
     isActive: true,
   },
 ];
+
+const SEEDED_PRODUCTS: MerchantProduct[] = SEEDED_PRODUCT_INPUTS.map(
+  buildSeedProduct
+);
 
 export function getSeedInventoryProducts(): MerchantProduct[] {
   return SEEDED_PRODUCTS.map((product) => ({ ...product }));
@@ -794,11 +1113,15 @@ function buildSeedOrderItem(
 
   return {
     productId: product.id,
-    name: product.name,
+    name: normalizeMerchantProductName(product.name),
     supplier: product.supplier,
     quantity,
     unitPrice: product.unitPrice,
     packSize: product.packSize,
+    quantityBase: convertMerchantPurchaseQuantityToBase(quantity, product),
+    displayUnitName: product.purchaseUnitName,
+    unitSize: product.purchaseUnitSize,
+    baseUnitName: product.baseUnitName,
   };
 }
 
@@ -834,14 +1157,39 @@ function buildSeedSale(
   }
 
   const unitPrice = sale.unitPrice ?? product.sellingPrice;
+  const stockAfterSale =
+    product.purchaseUnitSize && product.purchaseUnitSize > 1
+      ? sale.stockAfterSale * product.purchaseUnitSize
+      : sale.stockAfterSale;
 
   return {
     ...sale,
-    productName: product.name,
+    productName: normalizeMerchantProductName(product.name),
     category: product.category,
+    stockAfterSale,
     unitPrice,
     totalAmount: sale.quantity * unitPrice,
+    quantityBase: convertMerchantSaleQuantityToBase(sale.quantity, product),
+    displayUnitName: product.saleUnitName,
+    unitSize: product.saleUnitSize,
   };
+}
+
+function getSeedProduct(productId: string): MerchantProduct {
+  const product = SEEDED_PRODUCTS.find((entry) => entry.id === productId);
+
+  if (!product) {
+    throw new Error(`Missing seeded product for ${productId}`);
+  }
+
+  return product;
+}
+
+function convertSeedLegacyStockQuantity(productId: string, quantity: number): number {
+  const product = getSeedProduct(productId);
+  return product.purchaseUnitSize && product.purchaseUnitSize > 1
+    ? quantity * product.purchaseUnitSize
+    : quantity;
 }
 
 export function buildInventoryProducts(
@@ -849,20 +1197,21 @@ export function buildInventoryProducts(
   orders: MerchantOrder[]
 ): InventoryProduct[] {
   return products.map((product) => {
+    const normalizedProduct = normalizeMerchantProductUnits(product);
     const onOrder = orders
       .filter(
         (order) => order.status !== "Draft" && isActiveOrder(order.status)
       )
       .flatMap((order) => order.items)
       .filter((item) => item.productId === product.id)
-      .reduce((total, item) => total + item.quantity, 0);
+      .reduce((total, item) => total + getMerchantOrderItemBaseQuantity(item), 0);
 
     return {
-      ...product,
-      baseUnitName: inferMerchantUnitNameFromText(product.packSize),
-      purchaseUnitName: inferMerchantUnitNameFromText(product.minOrder),
-      purchaseUnitSize: 1,
-      stockStatus: getStockStatus(product.stockOnHand, product.reorderPoint),
+      ...normalizedProduct,
+      stockStatus: getStockStatus(
+        normalizedProduct.stockOnHand,
+        normalizedProduct.reorderPoint
+      ),
       onOrder,
     };
   });
@@ -888,13 +1237,13 @@ export function normalizeMerchantState(
       seededProduct?.sellingPrice ??
       estimateSellingPrice(product.unitPrice);
 
-    return {
+    return normalizeMerchantProductUnits({
       id: product.id,
       sku:
         product.sku ??
         seededProduct?.sku ??
         `KIN-RTL-${product.id.slice(0, 6).toUpperCase()}`,
-      name: product.name,
+      name: normalizeMerchantProductName(product.name),
       category: product.category ?? seededProduct?.category ?? "General",
       supplier:
         product.supplier ??
@@ -921,7 +1270,16 @@ export function normalizeMerchantState(
         seededProduct?.lastRestockedAt ??
         new Date().toISOString(),
       isActive: product.isActive ?? seededProduct?.isActive ?? true,
-    };
+      baseUnitName: product.baseUnitName ?? seededProduct?.baseUnitName,
+      purchaseUnitName:
+        product.purchaseUnitName ?? seededProduct?.purchaseUnitName,
+      purchaseUnitSize:
+        product.purchaseUnitSize ?? seededProduct?.purchaseUnitSize,
+      saleUnitName: product.saleUnitName ?? seededProduct?.saleUnitName,
+      saleUnitSize: product.saleUnitSize ?? seededProduct?.saleUnitSize,
+      unitSchemaVersion:
+        product.unitSchemaVersion ?? seededProduct?.unitSchemaVersion ?? 1,
+    });
   });
 
   return {
@@ -933,12 +1291,27 @@ export function normalizeMerchantState(
     orders:
       rawState.orders?.map((order) => ({
         ...order,
+        items: order.items.map((item) => ({
+          ...item,
+          name: normalizeMerchantProductName(item.name),
+        })),
         sourceDetail: order.sourceDetail ?? getMerchantOrderSourceDetail(order),
       })) ?? seededState.orders,
-    activities: rawState.activities ?? seededState.activities,
-    sales: rawState.sales ?? seededState.sales,
+    activities:
+      rawState.activities?.map((activity) => ({
+        ...activity,
+        detail: normalizeMerchantPackCountLabel(activity.detail),
+      })) ?? seededState.activities,
+    sales:
+      rawState.sales?.map((sale) => ({
+        ...sale,
+        productName: normalizeMerchantProductName(sale.productName),
+      })) ?? seededState.sales,
     inventoryMovements:
-      rawState.inventoryMovements ?? seededState.inventoryMovements,
+      rawState.inventoryMovements?.map((movement) => ({
+        ...movement,
+        productName: normalizeMerchantProductName(movement.productName),
+      })) ?? seededState.inventoryMovements,
   };
 }
 
@@ -1073,7 +1446,7 @@ export function createSeedState(): MerchantState {
     {
       id: "movement-seed-order-10418-tomate",
       productId: "tomate-tmt-48",
-      productName: "TMT Tomato Paste 48 x 70g",
+      productName: "TMT Tomato Paste 70g",
       reason: "order-received",
       quantityChange: 5,
       stockAfter: 12,
@@ -1083,7 +1456,7 @@ export function createSeedState(): MerchantState {
     {
       id: "movement-seed-sale-201",
       productId: "vitalo-water-30",
-      productName: "Vitalo Water 30 x 500ml",
+      productName: "Vitalo Water 500ml",
       reason: "sale",
       quantityChange: -3,
       stockAfter: 5,
@@ -1101,7 +1474,7 @@ export function createSeedState(): MerchantState {
     {
       id: "movement-seed-sale-203",
       productId: "fanta-orange-24",
-      productName: "Fanta Orange 24 x 50cl",
+      productName: "Fanta Orange 50cl",
       reason: "sale",
       quantityChange: -2,
       stockAfter: 10,
@@ -1138,7 +1511,7 @@ export function createSeedState(): MerchantState {
         tone: "warning",
         title: "Deux rayons sont à réapprovisionner",
         detail:
-          "Coca-Cola 24 x 50cl et Sel Iodé sont en rupture. Réappro à lancer avant le rush du soir.",
+          "Coca-Cola 50cl et Sel Iodé 500g sont en rupture. Réappro à lancer avant le rush du soir.",
         createdAt: "2026-04-09T07:35:00.000Z",
       },
       {

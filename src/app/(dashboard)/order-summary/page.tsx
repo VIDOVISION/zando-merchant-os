@@ -12,27 +12,46 @@ import {
 import { useMerchantData } from "@/components/merchant/MerchantDataContext";
 import {
   formatCdf,
+  formatMerchantMinimumPurchaseQuantity,
   formatMerchantUnitQuantity,
   getMerchantOrderSourceLabel,
   getMerchantOrderStatusDescription,
   getMerchantOrderStatusLabel,
+  inferMerchantProductUnitConfig,
 } from "@/lib/merchant-data";
 
-function getCartItemQuantityLabel(item: CartItem): string {
-  const unitSize = item.unit_size ?? 1;
-  const displayUnitName = item.display_unit_name ?? "unit\u00e9";
-  const baseUnitName = item.base_unit_name ?? displayUnitName;
-  const quantityBase = item.quantity_base ?? item.quantity * unitSize;
-  const displayLabel = formatMerchantUnitQuantity(item.quantity, displayUnitName);
+function getCartItemPurchaseLabel(item: CartItem): string {
+  const inferredConfig = inferMerchantProductUnitConfig({
+    packSize: item.pack_size ?? item.min_order,
+    minOrder: item.min_order,
+    purchaseUnitName: item.display_unit_name,
+  });
 
-  if (unitSize <= 1) {
-    return displayLabel;
+  return formatMerchantUnitQuantity(
+    item.quantity,
+    item.display_unit_name ?? inferredConfig.purchaseUnitName
+  );
+}
+
+function getCartItemStockEquivalentLabel(item: CartItem): string | null {
+  const inferredConfig = inferMerchantProductUnitConfig({
+    packSize: item.pack_size ?? item.min_order,
+    minOrder: item.min_order,
+    baseUnitName: item.base_unit_name,
+    purchaseUnitName: item.display_unit_name,
+    purchaseUnitSize: item.unit_size,
+  });
+  const unitSize = item.unit_size ?? inferredConfig.purchaseUnitSize;
+  const quantityBase = item.quantity * unitSize;
+
+  if (!quantityBase || quantityBase <= item.quantity) {
+    return null;
   }
 
-  return `${displayLabel} (${formatMerchantUnitQuantity(
+  return `${getCartItemPurchaseLabel(item)} = ${formatMerchantUnitQuantity(
     quantityBase,
-    baseUnitName
-  )})`;
+    item.base_unit_name ?? inferredConfig.baseUnitName
+  )} au stock`;
 }
 
 function getOrderSourceDetailFromDraftIntent(draftIntent: CartDraftIntent) {
@@ -287,7 +306,7 @@ export default function OrderSummaryPage() {
             Vérifier et confirmer
           </p>
           <h1 className="mt-1 font-heading text-3xl font-bold tracking-tight text-gradient">
-            Confirmez la livraison puis envoyez la commande
+            Vérifiez puis envoyez la commande
           </h1>
           <p className="mt-1 text-sm text-secondary">
             {getDraftIntentDescription(draftIntent)}
@@ -326,7 +345,7 @@ export default function OrderSummaryPage() {
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-surface/50 p-4">
-            <p className="text-xs text-muted">Unités</p>
+            <p className="text-xs text-muted">Quantité achat</p>
             <p className="mt-2 text-lg font-semibold text-primary">
               {totalItems}
             </p>
@@ -368,8 +387,16 @@ export default function OrderSummaryPage() {
                 </p>
                 <div className="mt-3 flex flex-wrap gap-4 text-xs text-secondary">
                   <span>Prix unitaire {formatCdf(item.unit_price)}</span>
-                  <span>Minimum {item.min_order}</span>
-                  <span>Command\u00e9 {getCartItemQuantityLabel(item)}</span>
+                  <span>
+                    Minimum{" "}
+                    {formatMerchantMinimumPurchaseQuantity(item.min_order, {
+                      purchaseUnitName: item.display_unit_name,
+                    })}
+                  </span>
+                  <span>Commandé : {getCartItemPurchaseLabel(item)}</span>
+                  {getCartItemStockEquivalentLabel(item) ? (
+                    <span>{getCartItemStockEquivalentLabel(item)}</span>
+                  ) : null}
                 </div>
               </div>
               <div className="flex flex-col gap-3 lg:items-end">

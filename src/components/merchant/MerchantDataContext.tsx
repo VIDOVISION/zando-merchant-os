@@ -23,15 +23,22 @@ import {
 } from "@/lib/merchant-store";
 import {
   buildInventoryProducts,
+  convertMerchantPurchaseQuantityToBase,
+  convertMerchantSaleQuantityToBase,
   estimateCostFromSellingPrice,
   formatCdf,
+  formatMerchantBaseQuantity,
+  formatMerchantOrderItemQuantity,
   formatShortDate,
   getDeliveryTrackingStatus,
   getMerchantPaymentMethodLabel,
+  inferMerchantProductUnitConfig,
   getNextDeliveryTrackingStatus,
   getStockStatus,
   isActiveOrder,
   isTrackedDeliveryOrder,
+  normalizeMerchantProductUnits,
+  normalizeMerchantProductName,
   type DeliveryTrackingStatus,
   type MerchantInventoryMovement,
   type MerchantInventoryMovementReason,
@@ -212,12 +219,22 @@ function getNextOrderSequence(existingOrders: MerchantOrder[]): number {
 }
 
 function toCartItem(product: MerchantProduct, quantity: number): CartItem {
+  const normalizedProduct = normalizeMerchantProductUnits(product);
+
   return {
-    id: product.id,
-    name: product.name,
-    supplier: product.supplier,
-    unit_price: product.unitPrice,
-    min_order: product.minOrder,
+    id: normalizedProduct.id,
+    name: normalizeMerchantProductName(normalizedProduct.name),
+    supplier: normalizedProduct.supplier,
+    unit_price: normalizedProduct.unitPrice,
+    min_order: normalizedProduct.minOrder,
+    pack_size: normalizedProduct.packSize,
+    quantity_base: convertMerchantPurchaseQuantityToBase(
+      quantity,
+      normalizedProduct
+    ),
+    display_unit_name: normalizedProduct.purchaseUnitName,
+    unit_size: normalizedProduct.purchaseUnitSize,
+    base_unit_name: normalizedProduct.baseUnitName,
     quantity,
   };
 }
@@ -228,13 +245,39 @@ function toMerchantOrderItems(
 ): MerchantOrderItem[] {
   return items.map((item) => {
     const product = products.find((entry) => entry.id === item.id);
+    const normalizedProduct = product
+      ? normalizeMerchantProductUnits(product)
+      : null;
+    const unitConfig = normalizedProduct
+      ? inferMerchantProductUnitConfig(normalizedProduct)
+      : inferMerchantProductUnitConfig({
+          packSize: item.pack_size ?? item.min_order,
+          minOrder: item.min_order,
+          baseUnitName: item.base_unit_name,
+          purchaseUnitName: item.display_unit_name,
+          purchaseUnitSize: item.unit_size,
+        });
+
     return {
       productId: item.id,
-      name: item.name,
+      name: normalizeMerchantProductName(item.name),
       supplier: item.supplier,
       quantity: item.quantity,
       unitPrice: item.unit_price,
-      packSize: product?.packSize ?? item.min_order,
+      packSize: normalizedProduct?.packSize ?? item.pack_size ?? item.min_order,
+      quantityBase: item.quantity * unitConfig.purchaseUnitSize,
+      displayUnitName:
+        normalizedProduct?.purchaseUnitName ??
+        item.display_unit_name ??
+        unitConfig.purchaseUnitName,
+      unitSize:
+        normalizedProduct?.purchaseUnitSize ??
+        item.unit_size ??
+        unitConfig.purchaseUnitSize,
+      baseUnitName:
+        normalizedProduct?.baseUnitName ??
+        item.base_unit_name ??
+        unitConfig.baseUnitName,
     };
   });
 }
@@ -353,8 +396,12 @@ function hasSameOrderItems(
       item.name === nextItem.name &&
       item.supplier === nextItem.supplier &&
       item.quantity === nextItem.quantity &&
+      item.quantityBase === nextItem.quantityBase &&
       item.unitPrice === nextItem.unitPrice &&
-      item.packSize === nextItem.packSize
+      item.packSize === nextItem.packSize &&
+      item.displayUnitName === nextItem.displayUnitName &&
+      item.unitSize === nextItem.unitSize &&
+      item.baseUnitName === nextItem.baseUnitName
     );
   });
 }
@@ -437,7 +484,14 @@ function buildRecordedSaleActivity(
     title: quickAddedProduct
       ? "Produit ajouté puis vendu"
       : "Vente enregistrée",
-    detail: `${sale.productName} x${sale.quantity} pour ${formatCdf(sale.totalAmount)} via ${getMerchantPaymentMethodLabel(paymentMethod)}. Il reste ${sale.stockAfterSale} en rayon.`,
+    detail: `${sale.productName} ${formatMerchantOrderItemQuantity({
+      quantity: sale.quantity,
+      packSize: "1 unit\u00e9",
+      quantityBase: sale.quantityBase,
+      displayUnitName: sale.displayUnitName,
+      unitSize: sale.unitSize,
+      baseUnitName: sale.displayUnitName,
+    })} pour ${formatCdf(sale.totalAmount)} via ${getMerchantPaymentMethodLabel(paymentMethod)}. Stock restant ${sale.stockAfterSale}.`,
     createdAt: sale.soldAt,
   };
 }
@@ -482,10 +536,14 @@ function buildQuickAddProduct(
   soldAt: string,
   profile: MerchantState["profile"]
 ): MerchantProduct {
-  const name = input.name.trim();
+  const name = normalizeMerchantProductName(input.name);
   const category = input.category.trim();
   const startingStock = input.startingStock ?? quantity;
   const reorderPoint = Math.max(2, Math.ceil(startingStock * 0.4));
+  const unitConfig = inferMerchantProductUnitConfig({
+    packSize: "1 unit\u00e9",
+    minOrder: "1 unit\u00e9",
+  });
 
   return {
     id: `product-${crypto.randomUUID()}`,
@@ -504,6 +562,8 @@ function buildQuickAddProduct(
     leadTimeDays: 1,
     lastRestockedAt: soldAt,
     isActive: true,
+    ...unitConfig,
+    unitSchemaVersion: 1,
   };
 }
 
@@ -542,13 +602,16 @@ function buildMinimumOrderLabel(packSize: string): string {
 
 function buildSaleMovement(sale: MerchantSale): MerchantInventoryMovement {
   return {
-    id: `movement-${sale.id}`,
+    id: crypto.randomUUID(),
     productId: sale.productId,
-    productName: sale.productName,
+    productName: normalizeMerchantProductName(sale.productName),
     reason: "sale",
-    quantityChange: -sale.quantity,
+    quantityChange: -(sale.quantityBase ?? sale.quantity),
     stockAfter: sale.stockAfterSale,
     createdAt: sale.soldAt,
+    displayQuantity: sale.quantity,
+    displayUnitName: sale.displayUnitName,
+    unitSize: sale.unitSize,
   };
 }
 
@@ -566,15 +629,25 @@ function buildReceivedOrderMovements(
       return movements;
     }
 
+    const quantityBase =
+      item.quantityBase ?? convertMerchantPurchaseQuantityToBase(item.quantity, {
+        packSize: item.packSize,
+        minOrder: item.packSize,
+        purchaseUnitSize: item.unitSize,
+      });
+
     movements.push({
       id: crypto.randomUUID(),
       productId: item.productId,
-      productName: item.name,
+      productName: normalizeMerchantProductName(item.name),
       reason: "order-received",
-      quantityChange: item.quantity,
+      quantityChange: quantityBase,
       stockAfter: updatedProduct.stockOnHand,
       note: `${order.reference} reçu de ${order.supplierName}.`,
       createdAt,
+      displayQuantity: item.quantity,
+      displayUnitName: item.displayUnitName,
+      unitSize: item.unitSize,
     });
 
     return movements;
@@ -592,16 +665,22 @@ function buildManualInventoryMovement(input: {
   stockAfter: number;
   note?: string;
   createdAt: string;
+  displayQuantity?: number;
+  displayUnitName?: string;
+  unitSize?: number;
 }): MerchantInventoryMovement {
   return {
     id: crypto.randomUUID(),
     productId: input.productId,
-    productName: input.productName,
+    productName: normalizeMerchantProductName(input.productName),
     reason: input.reason,
     quantityChange: input.quantityChange,
     stockAfter: input.stockAfter,
     note: input.note?.trim() || undefined,
     createdAt: input.createdAt,
+    displayQuantity: input.displayQuantity ?? Math.abs(input.quantityChange),
+    displayUnitName: input.displayUnitName,
+    unitSize: input.unitSize,
   };
 }
 
@@ -870,10 +949,15 @@ export function MerchantDataProvider({
 
       return {
         id: item.productId,
-        name: item.name,
+        name: normalizeMerchantProductName(item.name),
         supplier: item.supplier,
         unit_price: item.unitPrice,
         min_order: item.packSize || "1 unité",
+        pack_size: item.packSize,
+        quantity_base: item.quantityBase,
+        display_unit_name: item.displayUnitName,
+        unit_size: item.unitSize,
+        base_unit_name: item.baseUnitName,
         quantity: item.quantity,
       };
     });
@@ -890,7 +974,7 @@ export function MerchantDataProvider({
       reorderPoint,
       startingStock,
     }: CreateInventoryProductInput): Promise<MerchantProduct> => {
-      const trimmedName = name.trim();
+      const trimmedName = normalizeMerchantProductName(name);
       const trimmedCategory = category.trim();
       const trimmedSupplier = supplier.trim();
       const trimmedPackSize = packSize.trim();
@@ -929,8 +1013,14 @@ export function MerchantDataProvider({
 
       const currentState = stateRef.current;
       const createdAt = new Date().toISOString();
+      const unitConfig = inferMerchantProductUnitConfig({
+        packSize: trimmedPackSize,
+        minOrder: buildMinimumOrderLabel(trimmedPackSize),
+      });
       const roundedReorderPoint = Math.round(reorderPoint);
       const roundedStartingStock = Math.round(startingStock);
+      const startingStockBase =
+        roundedStartingStock * unitConfig.purchaseUnitSize;
       const product: MerchantProduct = {
         id: `product-${crypto.randomUUID()}`,
         sku: buildInventorySku(trimmedName, currentState.products),
@@ -942,23 +1032,31 @@ export function MerchantDataProvider({
         sellingPrice: Math.round(sellingPrice),
         packSize: trimmedPackSize,
         minOrder: buildMinimumOrderLabel(trimmedPackSize),
-        stockOnHand: roundedStartingStock,
+        stockOnHand: startingStockBase,
         reorderPoint: roundedReorderPoint,
-        reorderQuantity: Math.max(4, roundedReorderPoint * 2 || 4),
+        reorderQuantity:
+          unitConfig.purchaseUnitSize > 1
+            ? Math.max(1, Math.ceil(roundedReorderPoint / unitConfig.purchaseUnitSize))
+            : Math.max(4, roundedReorderPoint * 2 || 4),
         leadTimeDays: 1,
         lastRestockedAt: createdAt,
         isActive: true,
+        ...unitConfig,
+        unitSchemaVersion: 1,
       };
       const initialMovement =
-        roundedStartingStock > 0
+        startingStockBase > 0
           ? buildManualInventoryMovement({
               productId: product.id,
-              productName: product.name,
+              productName: normalizeMerchantProductName(product.name),
               reason: "stock_initial",
-              quantityChange: roundedStartingStock,
-              stockAfter: roundedStartingStock,
+              quantityChange: startingStockBase,
+              stockAfter: startingStockBase,
               note: "Stock initial saisi \u00e0 la cr\u00e9ation du produit.",
               createdAt,
+              displayQuantity: roundedStartingStock,
+              displayUnitName: unitConfig.purchaseUnitName,
+              unitSize: unitConfig.purchaseUnitSize,
             })
           : null;
 
@@ -1019,6 +1117,11 @@ export function MerchantDataProvider({
         throw new Error("Saisissez un seuil de réappro valide.");
       }
 
+      const unitConfig = inferMerchantProductUnitConfig({
+        packSize: trimmedPackSize,
+        minOrder: buildMinimumOrderLabel(trimmedPackSize),
+      });
+      const roundedReorderPoint = Math.round(reorderPoint);
       const nextProduct: MerchantProduct = {
         ...currentProduct,
         supplier: trimmedSupplier,
@@ -1026,9 +1129,14 @@ export function MerchantDataProvider({
         sellingPrice: Math.round(sellingPrice),
         packSize: trimmedPackSize,
         minOrder: buildMinimumOrderLabel(trimmedPackSize),
-        reorderPoint: Math.round(reorderPoint),
-        reorderQuantity: Math.max(4, Math.round(reorderPoint) * 2 || 4),
+        reorderPoint: roundedReorderPoint,
+        reorderQuantity:
+          unitConfig.purchaseUnitSize > 1
+            ? Math.max(1, Math.ceil(roundedReorderPoint / unitConfig.purchaseUnitSize))
+            : Math.max(4, roundedReorderPoint * 2 || 4),
         isActive,
+        ...unitConfig,
+        unitSchemaVersion: 1,
       };
 
       await upsertInventoryProducts([nextProduct]);
@@ -1063,6 +1171,8 @@ export function MerchantDataProvider({
       if (!currentProduct) {
         throw new Error("Choisissez un produit à ajuster.");
       }
+
+      const normalizedProduct = normalizeMerchantProductUnits(currentProduct);
 
       if (
         reason !== "inventory-correction" &&
@@ -1112,12 +1222,15 @@ export function MerchantDataProvider({
       };
       const movement = buildManualInventoryMovement({
         productId: currentProduct.id,
-        productName: currentProduct.name,
+        productName: normalizeMerchantProductName(currentProduct.name),
         reason,
         quantityChange,
         stockAfter: nextStockOnHand,
         note,
         createdAt,
+        displayQuantity: Math.abs(quantityChange),
+        displayUnitName: normalizedProduct.baseUnitName,
+        unitSize: 1,
       });
 
       await upsertInventoryProducts([nextProduct]);
@@ -1209,9 +1322,15 @@ export function MerchantDataProvider({
         );
       }
 
-      if (product.stockOnHand < quantity) {
+      const normalizedProduct = normalizeMerchantProductUnits(product);
+      const quantityBase = convertMerchantSaleQuantityToBase(
+        quantity,
+        normalizedProduct
+      );
+
+      if (product.stockOnHand < quantityBase) {
         throw new Error(
-          `${product.name} n'a que ${product.stockOnHand} unité${product.stockOnHand === 1 ? "" : "s"} en stock. Réduisez la quantité ou réapprovisionnez d'abord.`
+          `${product.name} n'a que ${formatMerchantBaseQuantity(product.stockOnHand, normalizedProduct)} en stock. Réduisez la quantité ou réapprovisionnez d'abord.`
         );
       }
 
@@ -1219,14 +1338,17 @@ export function MerchantDataProvider({
         product.stockOnHand,
         product.reorderPoint
       );
-      const stockAfterSale = product.stockOnHand - quantity;
+      const stockAfterSale = product.stockOnHand - quantityBase;
       const nextStatus = getStockStatus(stockAfterSale, product.reorderPoint);
       const sale: MerchantSale = {
         id: `sale-${crypto.randomUUID()}`,
         productId: product.id,
-        productName: product.name,
+        productName: normalizeMerchantProductName(product.name),
         category: product.category,
         quantity,
+        quantityBase,
+        displayUnitName: normalizedProduct.saleUnitName,
+        unitSize: normalizedProduct.saleUnitSize,
         unitPrice,
         totalAmount: quantity * unitPrice,
         paymentMethod,
@@ -1237,9 +1359,9 @@ export function MerchantDataProvider({
         quickAddedProduct: quickAdded || undefined,
       };
       const updatedProduct: MerchantProduct = {
-        ...product,
+        ...normalizedProduct,
         stockOnHand: stockAfterSale,
-        sellingPrice: unitPrice,
+        sellingPrice: Math.round(unitPrice / normalizedProduct.saleUnitSize),
       };
       const nextProducts = quickAdded
         ? [updatedProduct, ...currentState.products]
@@ -1312,12 +1434,24 @@ export function MerchantDataProvider({
       return null;
     }
 
-    const restoredStock = product.stockOnHand + latestSale.quantity;
+    const restoredStock =
+      product.stockOnHand + (latestSale.quantityBase ?? latestSale.quantity);
     const updatedProduct: MerchantProduct = {
       ...product,
       stockOnHand: restoredStock,
     };
     const voidedActivity = buildVoidedSaleActivity(latestSale, restoredStock);
+    const latestSaleMovementIds = currentState.inventoryMovements
+      .filter(
+        (movement) =>
+          movement.id === `movement-${latestSale.id}` ||
+          (movement.reason === "sale" &&
+            movement.productId === latestSale.productId &&
+            movement.createdAt === latestSale.soldAt &&
+            movement.quantityChange === -(latestSale.quantityBase ?? latestSale.quantity) &&
+            movement.stockAfter === latestSale.stockAfterSale)
+      )
+      .map((movement) => movement.id);
 
     await upsertInventoryProducts([updatedProduct]);
 
@@ -1335,7 +1469,7 @@ export function MerchantDataProvider({
       `activity-${latestSale.id}-recorded`,
       `activity-${latestSale.id}-low-stock`,
     ]);
-    await deleteInventoryMovements([`movement-${latestSale.id}`]);
+    await deleteInventoryMovements(latestSaleMovementIds);
     await upsertActivities([voidedActivity]);
 
     setState((current) => ({
@@ -1345,7 +1479,7 @@ export function MerchantDataProvider({
       ),
       sales: current.sales.filter((sale) => sale.id !== latestSale.id),
       inventoryMovements: current.inventoryMovements.filter(
-        (movement) => movement.id !== `movement-${latestSale.id}`
+        (movement) => !latestSaleMovementIds.includes(movement.id)
       ),
       activities: [
         voidedActivity,
@@ -1524,10 +1658,17 @@ export function MerchantDataProvider({
               if (!matchingItem) {
                 return product;
               }
+              const quantityBase =
+                matchingItem.quantityBase ??
+                convertMerchantPurchaseQuantityToBase(matchingItem.quantity, {
+                  packSize: matchingItem.packSize,
+                  minOrder: matchingItem.packSize,
+                  purchaseUnitSize: matchingItem.unitSize,
+                });
 
               return {
                 ...product,
-                stockOnHand: product.stockOnHand + matchingItem.quantity,
+                stockOnHand: product.stockOnHand + quantityBase,
                 lastRestockedAt: statusUpdatedAt,
               };
             })
@@ -1540,7 +1681,7 @@ export function MerchantDataProvider({
         getLeadTimeDays(
           nextOrder.items.map((item) => ({
             id: item.productId,
-            name: item.name,
+            name: normalizeMerchantProductName(item.name),
             supplier: item.supplier,
             unit_price: item.unitPrice,
             min_order: item.packSize,

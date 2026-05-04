@@ -4,7 +4,12 @@ import { useDeferredValue, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart/CartContext";
 import { useMerchantData } from "@/components/merchant/MerchantDataContext";
-import { formatCdf, formatDateTime } from "@/lib/merchant-data";
+import {
+  formatCdf,
+  formatDateTime,
+  formatMerchantBaseQuantity,
+  formatMerchantUnitQuantity,
+} from "@/lib/merchant-data";
 
 const PAYMENT_METHODS = ["Cash", "Mobile Money", "Card"] as const;
 const SALES_HISTORY_RANGES = [
@@ -258,10 +263,15 @@ export default function SalesPage() {
   const selectedProduct =
     inventory.find((product) => product.id === selectedProductId) ?? exactMatch ?? null;
   const quantityValue = Number.parseInt(quantity, 10) || 0;
+  const saleUnitSize = selectedProduct?.saleUnitSize ?? 1;
+  const quantityBaseValue = quantityValue * saleUnitSize;
   const unitPriceValue = Number.parseInt(unitPrice, 10) || 0;
   const quickAddStartingStockValue =
     Number.parseInt(quickAddStartingStock, 10) || 0;
-  const suggestedUnitPrice = selectedProduct?.sellingPrice ?? 0;
+  const suggestedUnitPrice =
+    selectedProduct != null
+      ? selectedProduct.sellingPrice * selectedProduct.saleUnitSize
+      : 0;
   const resolvedUnitPrice =
     unitPriceValue ||
     suggestedUnitPrice ||
@@ -270,9 +280,9 @@ export default function SalesPage() {
   const totalValue = quantityValue * resolvedUnitPrice;
   const currentStock = selectedProduct?.stockOnHand ?? null;
   const remainingStock =
-    currentStock != null ? currentStock - quantityValue : null;
+    currentStock != null ? currentStock - quantityBaseValue : null;
   const insufficientStock =
-    currentStock != null && quantityValue > currentStock;
+    currentStock != null && quantityBaseValue > currentStock;
   const lowStockAfterSale =
     selectedProduct != null &&
     remainingStock != null &&
@@ -458,7 +468,7 @@ export default function SalesPage() {
 
     setSelectedProductId(product.id);
     setProductQuery(product.name);
-    setUnitPrice(String(product.sellingPrice));
+    setUnitPrice(String(product.sellingPrice * product.saleUnitSize));
     setShowQuickAdd(false);
     setQuickAddName("");
     setQuickAddSellingPrice("");
@@ -885,10 +895,10 @@ export default function SalesPage() {
                           {product.name}
                         </p>
                         <p className="mt-1 text-xs text-muted">
-                          {product.stockOnHand} en stock | {product.supplier}
+                          {formatMerchantBaseQuantity(product.stockOnHand, product)} en stock | {product.supplier}
                         </p>
                         <p className="mt-2 text-xs font-medium text-accent">
-                          {formatCdf(product.sellingPrice)}
+                          {formatCdf(product.sellingPrice * product.saleUnitSize)}
                         </p>
                       </button>
                     );
@@ -923,7 +933,7 @@ export default function SalesPage() {
                           {product.name}
                         </p>
                         <p className="mt-1 text-xs text-muted">
-                          {product.stockOnHand} en stock | {formatCdf(product.sellingPrice)}
+                          {formatMerchantBaseQuantity(product.stockOnHand, product)} en stock | {formatCdf(product.sellingPrice * product.saleUnitSize)}
                         </p>
                       </div>
                       <span className="ml-3 text-xs text-secondary">
@@ -943,16 +953,16 @@ export default function SalesPage() {
                       {selectedProduct.name}
                     </p>
                     <p className="mt-1 text-xs text-muted">
-                      {selectedProduct.stockOnHand} en stock |{" "}
+                      {formatMerchantBaseQuantity(selectedProduct.stockOnHand, selectedProduct)} en stock |{" "}
                       {getSalesCategoryLabel(selectedProduct.category)} |{" "}
                       {selectedProduct.supplier}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <span className="rounded-full border border-accent/20 bg-accent/10 px-2.5 py-1 text-[11px] font-medium text-accent">
-                        Prix conseillé {formatCdf(selectedProduct.sellingPrice)}
+                        Prix conseillé {formatCdf(selectedProduct.sellingPrice * selectedProduct.saleUnitSize)}
                       </span>
                       <span className="rounded-full border border-border bg-background/60 px-2.5 py-1 text-[11px] font-medium text-secondary">
-                        Stock actuel {selectedProduct.stockOnHand}
+                        Stock actuel {formatMerchantBaseQuantity(selectedProduct.stockOnHand, selectedProduct)}
                       </span>
                     </div>
                   </div>
@@ -1090,7 +1100,7 @@ export default function SalesPage() {
             <div className="grid gap-3 md:grid-cols-2">
               <label className="block">
                 <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted">
-                  Quantité
+                  Quantité{selectedProduct ? ` (${selectedProduct.saleUnitName})` : ""}
                 </span>
                 <input
                   type="number"
@@ -1118,7 +1128,7 @@ export default function SalesPage() {
                 />
                 {selectedProduct && (
                   <p className="mt-2 text-[11px] text-muted">
-                    Prix conseillé : {formatCdf(selectedProduct.sellingPrice)}
+                    Prix conseillé : {formatCdf(selectedProduct.sellingPrice * selectedProduct.saleUnitSize)}
                   </p>
                 )}
               </label>
@@ -1164,8 +1174,10 @@ export default function SalesPage() {
               </p>
               {selectedProduct && (
                 <p className="mt-1 text-xs text-secondary">
-                  {quantityValue} unité{quantityValue === 1 ? "" : "s"} à{" "}
-                  {formatCdf(resolvedUnitPrice)} l'unité
+                  {formatMerchantUnitQuantity(
+                    quantityValue,
+                    selectedProduct.saleUnitName
+                  )} à {formatCdf(resolvedUnitPrice)} l'unité
                 </p>
               )}
             </div>
@@ -1181,10 +1193,10 @@ export default function SalesPage() {
                 }`}
               >
                 {insufficientStock
-                  ? `Il ne reste que ${currentStock} unité${currentStock === 1 ? "" : "s"} de ${selectedProduct.name}. Réduisez la quantité ou préparez le réappro d'abord.`
+                  ? `Il ne reste que ${formatMerchantBaseQuantity(currentStock, selectedProduct)} de ${selectedProduct.name}. Réduisez la quantité ou préparez le réappro d'abord.`
                   : lowStockAfterSale
-                    ? `Après cette vente, il restera ${remainingStock} unité${remainingStock === 1 ? "" : "s"} de ${selectedProduct.name}. Préparez le réappro ensuite.`
-                    : `Après cette vente, il restera ${remainingStock} unité${remainingStock === 1 ? "" : "s"} de ${selectedProduct.name}.`}
+                    ? `Après cette vente, il restera ${formatMerchantBaseQuantity(remainingStock ?? 0, selectedProduct)} de ${selectedProduct.name}. Préparez le réappro ensuite.`
+                    : `Après cette vente, il restera ${formatMerchantBaseQuantity(remainingStock ?? 0, selectedProduct)} de ${selectedProduct.name}.`}
               </div>
             )}
 
@@ -1288,8 +1300,14 @@ export default function SalesPage() {
                           {insight.productName}
                         </p>
                         <p className="mt-1 text-xs text-muted">
-                          Vendu {insight.quantitySold} | {insight.stockAfterSale} restant
-                          {insight.stockAfterSale === 1 ? "" : "s"} |{" "}
+                          Vendu {insight.quantitySold} |{" "}
+                          {product
+                            ? formatMerchantBaseQuantity(
+                                insight.stockAfterSale,
+                                product
+                              )
+                            : `${insight.stockAfterSale} restant`}{" "}
+                          restant |{" "}
                           {product?.supplier ?? "Fournisseur non disponible"}
                         </p>
                       </div>
@@ -1306,8 +1324,13 @@ export default function SalesPage() {
 
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                       <p className="text-xs text-secondary">
-                        Réappro conseillé : {product?.reorderQuantity ?? insight.quantitySold}{" "}
-                        unité{(product?.reorderQuantity ?? insight.quantitySold) === 1 ? "" : "s"}
+                        Réappro conseillé :{" "}
+                        {product
+                          ? formatMerchantUnitQuantity(
+                              product.reorderQuantity,
+                              product.purchaseUnitName
+                            )
+                          : `${insight.quantitySold} unité${insight.quantitySold === 1 ? "" : "s"}`}
                       </p>
                       <button
                         type="button"
@@ -1368,11 +1391,20 @@ export default function SalesPage() {
                     )}
                   </div>
                   <p className="mt-1 text-xs text-muted">
-                    {sale.quantity} unités | {getPaymentMethodLabel(sale.paymentMethod)} |{" "}
+                    {formatMerchantUnitQuantity(
+                      sale.quantity,
+                      sale.displayUnitName ?? "unité"
+                    )} | {getPaymentMethodLabel(sale.paymentMethod)} |{" "}
                     {formatDateTime(sale.soldAt)}
                   </p>
                   <p className="mt-1 text-xs text-secondary">
-                    Stock après vente : {sale.stockAfterSale}
+                    Stock après vente :{" "}
+                    {(() => {
+                      const product = findProduct(sale.productId);
+                      return product
+                        ? formatMerchantBaseQuantity(sale.stockAfterSale, product)
+                        : sale.stockAfterSale;
+                    })()}
                   </p>
                   {sale.triggeredLowStock && (
                     <p className="mt-1 text-xs text-amber-200">
@@ -1386,7 +1418,7 @@ export default function SalesPage() {
                     {formatCdf(sale.totalAmount)}
                   </p>
                   <p className="mt-1 text-xs text-muted">
-                    {formatCdf(sale.unitPrice)} l'unité
+                    {formatCdf(sale.unitPrice)} / {sale.displayUnitName ?? "unité"}
                   </p>
                 </div>
               </div>

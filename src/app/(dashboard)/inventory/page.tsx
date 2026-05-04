@@ -7,6 +7,9 @@ import { useMerchantData } from "@/components/merchant/MerchantDataContext";
 import {
   formatCdf,
   formatDateTime,
+  formatMerchantBaseQuantity,
+  formatMerchantPurchaseEquivalentStock,
+  formatMerchantUnitQuantity,
   getMerchantCategoryLabel,
   getMerchantInventoryMovementReasonLabel,
   type InventoryProduct,
@@ -92,6 +95,21 @@ function getActiveLabel(isActive: boolean): string {
 
 function getMovementQuantityLabel(quantityChange: number): string {
   return quantityChange > 0 ? `+${quantityChange}` : `${quantityChange}`;
+}
+
+function getInventoryStockLabel(product: InventoryProduct): string {
+  return formatMerchantBaseQuantity(product.stockOnHand, product);
+}
+
+function getInventoryOnOrderLabel(product: InventoryProduct): string {
+  return formatMerchantPurchaseEquivalentStock(product.onOrder, product);
+}
+
+function getInventoryReorderLabel(product: InventoryProduct): string {
+  return formatMerchantUnitQuantity(
+    product.reorderQuantity,
+    product.purchaseUnitName
+  );
 }
 
 function buildDefaultCreateForm(): CreateFormState {
@@ -604,7 +622,8 @@ export default function InventoryPage() {
                     {product.name}
                   </p>
                   <p className="mt-1 text-xs text-muted">
-                    {product.stockOnHand} en stock, réappro {product.reorderQuantity} |{" "}
+                    {getInventoryStockLabel(product)} en stock, réappro{" "}
+                    {getInventoryReorderLabel(product)} |{" "}
                     {product.supplier}
                   </p>
                 </div>
@@ -662,7 +681,7 @@ export default function InventoryPage() {
                           name: event.target.value,
                         }))
                       }
-                      placeholder="Ex. Jus ananas 24 x 33cl"
+                      placeholder="Ex. Jus ananas 33cl"
                       className={inputClass}
                     />
                   </label>
@@ -1081,7 +1100,7 @@ export default function InventoryPage() {
                       <p className="text-xs text-muted">Stock actuel</p>
                       <p className="mt-1 text-sm font-medium text-primary">
                         {adjustmentTarget
-                          ? `${adjustmentTarget.stockOnHand} unités`
+                          ? getInventoryStockLabel(adjustmentTarget)
                           : "Choisissez un produit"}
                       </p>
                     </div>
@@ -1104,8 +1123,13 @@ export default function InventoryPage() {
                     <div>
                       <p className="text-xs text-muted">Stock après ajustement</p>
                       <p className="mt-1 text-sm font-medium text-primary">
-                        {projectedStock != null && projectedStock >= 0
-                          ? `${projectedStock} unités`
+                        {projectedStock != null &&
+                        projectedStock >= 0 &&
+                        adjustmentTarget
+                          ? formatMerchantBaseQuantity(
+                              projectedStock,
+                              adjustmentTarget
+                            )
                           : isCorrectionAdjustment
                             ? "Saisissez le stock compté"
                             : "Saisissez une quantité"}
@@ -1170,7 +1194,7 @@ export default function InventoryPage() {
                   <div className="rounded-2xl border border-border bg-surface/40 p-4">
                     <p className="text-xs text-muted">Stock</p>
                     <p className="mt-1 text-lg font-semibold text-primary">
-                      {selectedProduct.stockOnHand} unités
+                      {getInventoryStockLabel(selectedProduct)}
                     </p>
                     <p className="mt-1 text-xs text-secondary">
                       Seuil de réappro {selectedProduct.reorderPoint}
@@ -1179,10 +1203,10 @@ export default function InventoryPage() {
                   <div className="rounded-2xl border border-border bg-surface/40 p-4">
                     <p className="text-xs text-muted">En commande</p>
                     <p className="mt-1 text-lg font-semibold text-primary">
-                      {selectedProduct.onOrder} unités
+                      {getInventoryOnOrderLabel(selectedProduct)}
                     </p>
                     <p className="mt-1 text-xs text-secondary">
-                      Réappro conseillé {selectedProduct.reorderQuantity}
+                      Réappro conseillé {getInventoryReorderLabel(selectedProduct)}
                     </p>
                   </div>
                   <div className="rounded-2xl border border-border bg-surface/40 p-4">
@@ -1481,7 +1505,7 @@ export default function InventoryPage() {
                 <div className="rounded-2xl border border-border bg-surface/40 p-3">
                   <p className="text-xs text-muted">Stock</p>
                   <p className="mt-1 text-sm font-medium text-primary">
-                    {product.stockOnHand} unités
+                    {getInventoryStockLabel(product)}
                   </p>
                   <p className="mt-1 text-xs text-secondary">
                     Seuil {product.reorderPoint}
@@ -1490,10 +1514,10 @@ export default function InventoryPage() {
                 <div className="rounded-2xl border border-border bg-surface/40 p-3">
                   <p className="text-xs text-muted">En commande</p>
                   <p className="mt-1 text-sm font-medium text-primary">
-                    {product.onOrder} unités
+                    {getInventoryOnOrderLabel(product)}
                   </p>
                   <p className="mt-1 text-xs text-secondary">
-                    Réappro {product.reorderQuantity}
+                    Réappro {getInventoryReorderLabel(product)}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-border bg-surface/40 p-3">
@@ -1610,7 +1634,7 @@ export default function InventoryPage() {
                   </td>
                   <td className="px-3 py-4 align-top">
                     <p className="font-medium text-primary">
-                      {product.stockOnHand} unités
+                      {getInventoryStockLabel(product)}
                     </p>
                     <p className="mt-1 text-xs text-muted">
                       Seuil de réappro {product.reorderPoint}
@@ -1618,10 +1642,10 @@ export default function InventoryPage() {
                   </td>
                   <td className="px-3 py-4 align-top">
                     <p className="font-medium text-primary">
-                      {product.onOrder} unités
+                      {getInventoryOnOrderLabel(product)}
                     </p>
                     <p className="mt-1 text-xs text-muted">
-                      Réappro conseillé {product.reorderQuantity}
+                      Réappro conseillé {getInventoryReorderLabel(product)}
                     </p>
                   </td>
                   <td className="px-3 py-4 align-top">

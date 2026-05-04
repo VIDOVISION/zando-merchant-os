@@ -5,6 +5,10 @@ import {
   formatShortDate,
   getMerchantOrderSourceDetail,
   getSeedInventoryProducts,
+  inferMerchantProductUnitConfig,
+  normalizeMerchantPackCountLabel,
+  normalizeMerchantProductName,
+  normalizeMerchantProductUnits,
   type MerchantActivity,
   type MerchantInventoryMovement,
   type MerchantOrder,
@@ -38,6 +42,12 @@ export interface InventoryItemRow {
   lead_time_days: number;
   last_restocked_at: string;
   is_active: boolean;
+  base_unit_name?: string;
+  purchase_unit_name?: string;
+  purchase_unit_size?: number;
+  sale_unit_name?: string;
+  sale_unit_size?: number;
+  unit_schema_version?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -68,6 +78,10 @@ export interface SupplierOrderItemRow {
   quantity: number;
   unit_price: number;
   pack_size: string;
+  quantity_base?: number;
+  display_unit_name?: string;
+  unit_size?: number;
+  base_unit_name?: string;
   created_at?: string;
 }
 
@@ -85,6 +99,9 @@ export interface SaleRow {
   stock_after_sale: number;
   triggered_low_stock: boolean;
   quick_added_product: boolean;
+  quantity_base?: number;
+  display_unit_name?: string;
+  unit_size?: number;
   created_at?: string;
 }
 
@@ -116,6 +133,9 @@ export interface InventoryMovementRow {
   quantity_change: number;
   stock_after: number;
   note: string | null;
+  display_quantity?: number;
+  display_unit_name?: string;
+  unit_size?: number;
   created_at: string;
 }
 
@@ -127,6 +147,11 @@ interface SeedBackfillPayload {
   deliveryUpdates: DeliveryUpdateRow[];
   inventoryMovements: InventoryMovementRow[];
 }
+
+const INVENTORY_ITEM_SELECT = "*";
+const SUPPLIER_ORDER_ITEM_SELECT = "*";
+const SALE_SELECT = "*";
+const INVENTORY_MOVEMENT_SELECT = "*";
 
 export function deriveMerchantProfile(
   metadata?: Record<string, unknown> | null
@@ -173,27 +198,35 @@ function buildSeedInventoryRows(
   merchantId: string,
   profile: MerchantProfile
 ): InventoryItemRow[] {
-  return getSeedInventoryProducts().map((product) => ({
+  return getSeedInventoryProducts().map((product) => {
+    const normalizedProduct = normalizeMerchantProductUnits(product);
+
+    return {
     id: buildMerchantScopedId(merchantId, product.id),
     merchant_id: merchantId,
-    sku: product.sku,
-    name: product.name,
-    category: product.category,
-    supplier: product.supplier,
-    neighborhood: product.neighborhood || profile.neighborhood,
-    unit_price: product.unitPrice,
-    selling_price: product.sellingPrice,
-    pack_size: product.packSize,
-    min_order: product.minOrder,
-    stock_on_hand: product.stockOnHand,
-    reorder_point: product.reorderPoint,
-    reorder_quantity: product.reorderQuantity,
-    lead_time_days: product.leadTimeDays,
-    last_restocked_at: product.lastRestockedAt,
-    is_active: product.isActive,
+    sku: normalizedProduct.sku,
+    name: normalizeMerchantProductName(normalizedProduct.name),
+    category: normalizedProduct.category,
+    supplier: normalizedProduct.supplier,
+    neighborhood: normalizedProduct.neighborhood || profile.neighborhood,
+    unit_price: normalizedProduct.unitPrice,
+    selling_price: normalizedProduct.sellingPrice,
+    pack_size: normalizedProduct.packSize,
+    min_order: normalizedProduct.minOrder,
+    stock_on_hand: normalizedProduct.stockOnHand,
+    reorder_point: normalizedProduct.reorderPoint,
+    reorder_quantity: normalizedProduct.reorderQuantity,
+    lead_time_days: normalizedProduct.leadTimeDays,
+    last_restocked_at: normalizedProduct.lastRestockedAt,
+    is_active: normalizedProduct.isActive,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-  }));
+  };
+  });
+}
+
+function hasInventoryUnitColumns(row: InventoryItemRow | undefined): boolean {
+  return row != null && "base_unit_name" in row;
 }
 
 async function ensureSeedInventoryRows(
@@ -208,9 +241,7 @@ async function ensureSeedInventoryRows(
     const { data, error } = await supabase
       .from("inventory_items")
       .insert(seededRows)
-      .select(
-        "id, merchant_id, sku, name, category, supplier, neighborhood, unit_price, selling_price, pack_size, min_order, stock_on_hand, reorder_point, reorder_quantity, lead_time_days, last_restocked_at, is_active, created_at, updated_at"
-      );
+      .select(INVENTORY_ITEM_SELECT);
 
     if (error) {
       throw new Error(`Unable to seed merchant inventory: ${error.message}`);
@@ -234,6 +265,76 @@ async function ensureSeedInventoryRows(
 
   inventoryRows = await fetchInventoryRows(supabase, merchantId);
   return inventoryRows;
+}
+
+function shouldConvertLegacyPackQuantities(
+  row: InventoryItemRow,
+  purchaseUnitSize: number
+): boolean {
+  if ((row.unit_schema_version ?? 0) > 0 || purchaseUnitSize <= 1) {
+    return false;
+  }
+
+  const packPriceThreshold = row.unit_price / Math.max(2, purchaseUnitSize / 2);
+  return row.selling_price > packPriceThreshold;
+}
+
+async function maybeBackfillInventoryUnitRows(
+  supabase: MerchantSupabaseClient,
+  merchantId: string,
+  inventoryRows: InventoryItemRow[]
+): Promise<InventoryItemRow[]> {
+  if (!hasInventoryUnitColumns(inventoryRows[0])) {
+    return inventoryRows;
+  }
+
+  const rowsToSave = inventoryRows
+    .filter((row) => (row.unit_schema_version ?? 0) < 1)
+    .map((row) => {
+      const unitConfig = inferMerchantProductUnitConfig({
+        packSize: row.pack_size,
+        minOrder: row.min_order,
+      });
+      const shouldConvertQuantities = shouldConvertLegacyPackQuantities(
+        row,
+        unitConfig.purchaseUnitSize
+      );
+
+      return {
+        ...row,
+        name: normalizeMerchantProductName(row.name),
+        selling_price: shouldConvertQuantities
+          ? Math.max(1, Math.round(row.selling_price / unitConfig.purchaseUnitSize))
+          : row.selling_price,
+        stock_on_hand: shouldConvertQuantities
+          ? row.stock_on_hand * unitConfig.purchaseUnitSize
+          : row.stock_on_hand,
+        reorder_point: shouldConvertQuantities
+          ? row.reorder_point * unitConfig.purchaseUnitSize
+          : row.reorder_point,
+        base_unit_name: unitConfig.baseUnitName,
+        purchase_unit_name: unitConfig.purchaseUnitName,
+        purchase_unit_size: unitConfig.purchaseUnitSize,
+        sale_unit_name: unitConfig.saleUnitName,
+        sale_unit_size: unitConfig.saleUnitSize,
+        unit_schema_version: 1,
+        updated_at: new Date().toISOString(),
+      };
+    });
+
+  if (rowsToSave.length === 0) {
+    return inventoryRows;
+  }
+
+  const { error } = await supabase
+    .from("inventory_items")
+    .upsert(rowsToSave, { onConflict: "id" });
+
+  if (error) {
+    throw new Error(`Unable to backfill inventory unit logic: ${error.message}`);
+  }
+
+  return fetchInventoryRows(supabase, merchantId);
 }
 
 function buildSeedProductIdMap(
@@ -530,7 +631,12 @@ export async function loadMerchantState(
   }
 ): Promise<MerchantState> {
   const { merchantId, profile } = input;
-  const inventoryRows = await ensureSeedInventoryRows(supabase, merchantId, profile);
+  let inventoryRows = await ensureSeedInventoryRows(supabase, merchantId, profile);
+  inventoryRows = await maybeBackfillInventoryUnitRows(
+    supabase,
+    merchantId,
+    inventoryRows
+  );
 
   let [
     orderRowsResult,
@@ -549,16 +655,12 @@ export async function loadMerchantState(
       .order("created_at", { ascending: false }),
     supabase
       .from("supplier_order_items")
-      .select(
-        "id, merchant_id, supplier_order_id, product_id, name, supplier, quantity, unit_price, pack_size, created_at"
-      )
+      .select(SUPPLIER_ORDER_ITEM_SELECT)
       .eq("merchant_id", merchantId)
       .order("created_at", { ascending: true }),
     supabase
       .from("sales")
-      .select(
-        "id, merchant_id, product_id, product_name, category, quantity, unit_price, total_amount, payment_method, sold_at, stock_after_sale, triggered_low_stock, quick_added_product, created_at"
-      )
+      .select(SALE_SELECT)
       .eq("merchant_id", merchantId)
       .order("sold_at", { ascending: false }),
     supabase
@@ -573,9 +675,7 @@ export async function loadMerchantState(
       .order("created_at", { ascending: false }),
     supabase
       .from("inventory_movements")
-      .select(
-        "id, merchant_id, product_id, product_name, movement_type, quantity_change, stock_after, note, created_at"
-      )
+      .select(INVENTORY_MOVEMENT_SELECT)
       .eq("merchant_id", merchantId)
       .order("created_at", { ascending: false }),
   ]);
@@ -647,16 +747,12 @@ export async function loadMerchantState(
         .order("created_at", { ascending: false }),
       supabase
         .from("supplier_order_items")
-        .select(
-          "id, merchant_id, supplier_order_id, product_id, name, supplier, quantity, unit_price, pack_size, created_at"
-        )
+        .select(SUPPLIER_ORDER_ITEM_SELECT)
         .eq("merchant_id", merchantId)
         .order("created_at", { ascending: true }),
       supabase
         .from("sales")
-        .select(
-          "id, merchant_id, product_id, product_name, category, quantity, unit_price, total_amount, payment_method, sold_at, stock_after_sale, triggered_low_stock, quick_added_product, created_at"
-        )
+        .select(SALE_SELECT)
         .eq("merchant_id", merchantId)
         .order("sold_at", { ascending: false }),
       supabase
@@ -671,9 +767,7 @@ export async function loadMerchantState(
         .order("created_at", { ascending: false }),
       supabase
         .from("inventory_movements")
-        .select(
-          "id, merchant_id, product_id, product_name, movement_type, quantity_change, stock_after, note, created_at"
-        )
+        .select(INVENTORY_MOVEMENT_SELECT)
         .eq("merchant_id", merchantId)
         .order("created_at", { ascending: false }),
     ]);
@@ -733,9 +827,7 @@ async function fetchInventoryRows(
 ): Promise<InventoryItemRow[]> {
   const { data, error } = await supabase
     .from("inventory_items")
-    .select(
-      "id, merchant_id, sku, name, category, supplier, neighborhood, unit_price, selling_price, pack_size, min_order, stock_on_hand, reorder_point, reorder_quantity, lead_time_days, last_restocked_at, is_active, created_at, updated_at"
-    )
+    .select(INVENTORY_ITEM_SELECT)
     .eq("merchant_id", merchantId)
     .order("name", { ascending: true });
 
@@ -747,10 +839,10 @@ async function fetchInventoryRows(
 }
 
 export function mapInventoryItemRowToProduct(row: InventoryItemRow): MerchantProduct {
-  return {
+  return normalizeMerchantProductUnits({
     id: row.id,
     sku: row.sku,
-    name: row.name,
+    name: normalizeMerchantProductName(row.name),
     category: row.category,
     supplier: row.supplier,
     neighborhood: row.neighborhood,
@@ -764,7 +856,13 @@ export function mapInventoryItemRowToProduct(row: InventoryItemRow): MerchantPro
     leadTimeDays: row.lead_time_days,
     lastRestockedAt: row.last_restocked_at,
     isActive: row.is_active,
-  };
+    baseUnitName: row.base_unit_name,
+    purchaseUnitName: row.purchase_unit_name,
+    purchaseUnitSize: row.purchase_unit_size,
+    saleUnitName: row.sale_unit_name,
+    saleUnitSize: row.sale_unit_size,
+    unitSchemaVersion: row.unit_schema_version,
+  });
 }
 
 export function toInventoryItemRow(
@@ -772,25 +870,26 @@ export function toInventoryItemRow(
   product: MerchantProduct
 ): InventoryItemRow {
   const timestamp = new Date().toISOString();
+  const normalizedProduct = normalizeMerchantProductUnits(product);
 
   return {
-    id: product.id,
+    id: normalizedProduct.id,
     merchant_id: merchantId,
-    sku: product.sku,
-    name: product.name,
-    category: product.category,
-    supplier: product.supplier,
-    neighborhood: product.neighborhood,
-    unit_price: product.unitPrice,
-    selling_price: product.sellingPrice,
-    pack_size: product.packSize,
-    min_order: product.minOrder,
-    stock_on_hand: product.stockOnHand,
-    reorder_point: product.reorderPoint,
-    reorder_quantity: product.reorderQuantity,
-    lead_time_days: product.leadTimeDays,
-    last_restocked_at: product.lastRestockedAt,
-    is_active: product.isActive,
+    sku: normalizedProduct.sku,
+    name: normalizeMerchantProductName(normalizedProduct.name),
+    category: normalizedProduct.category,
+    supplier: normalizedProduct.supplier,
+    neighborhood: normalizedProduct.neighborhood,
+    unit_price: normalizedProduct.unitPrice,
+    selling_price: normalizedProduct.sellingPrice,
+    pack_size: normalizedProduct.packSize,
+    min_order: normalizedProduct.minOrder,
+    stock_on_hand: normalizedProduct.stockOnHand,
+    reorder_point: normalizedProduct.reorderPoint,
+    reorder_quantity: normalizedProduct.reorderQuantity,
+    lead_time_days: normalizedProduct.leadTimeDays,
+    last_restocked_at: normalizedProduct.lastRestockedAt,
+    is_active: normalizedProduct.isActive,
     updated_at: timestamp,
   };
 }
@@ -805,13 +904,31 @@ function mapSupplierOrderRowsToOrders(
         collection[itemRow.supplier_order_id] = [];
       }
 
+      const unitSize = itemRow.unit_size ?? 1;
+      const unitConfig = inferMerchantProductUnitConfig({
+        packSize: itemRow.pack_size,
+        minOrder: itemRow.pack_size,
+        baseUnitName: unitSize > 1 ? itemRow.base_unit_name : undefined,
+        purchaseUnitName:
+          unitSize > 1 ? itemRow.display_unit_name : undefined,
+        purchaseUnitSize: unitSize > 1 ? unitSize : undefined,
+      });
+      const quantityBase =
+        (itemRow.quantity_base ?? 0) > itemRow.quantity
+          ? itemRow.quantity_base
+          : itemRow.quantity * unitConfig.purchaseUnitSize;
+
       collection[itemRow.supplier_order_id].push({
         productId: itemRow.product_id,
-        name: itemRow.name,
+        name: normalizeMerchantProductName(itemRow.name),
         supplier: itemRow.supplier,
         quantity: itemRow.quantity,
         unitPrice: itemRow.unit_price,
         packSize: itemRow.pack_size,
+        quantityBase,
+        displayUnitName: unitConfig.purchaseUnitName,
+        unitSize: unitConfig.purchaseUnitSize,
+        baseUnitName: unitConfig.baseUnitName,
       });
 
       return collection;
@@ -867,24 +984,26 @@ export function toSupplierOrderItemRows(
   orderId: string,
   items: MerchantOrderItem[]
 ): SupplierOrderItemRow[] {
-  return items.map((item, index) => ({
-    id: `${orderId}:item:${index + 1}`,
-    merchant_id: merchantId,
-    supplier_order_id: orderId,
-    product_id: item.productId,
-    name: item.name,
-    supplier: item.supplier,
-    quantity: item.quantity,
-    unit_price: item.unitPrice,
-    pack_size: item.packSize,
-  }));
+  return items.map((item, index) => {
+    return {
+      id: `${orderId}:item:${index + 1}`,
+      merchant_id: merchantId,
+      supplier_order_id: orderId,
+      product_id: item.productId,
+      name: normalizeMerchantProductName(item.name),
+      supplier: item.supplier,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      pack_size: item.packSize,
+    };
+  });
 }
 
 function mapSaleRowToSale(row: SaleRow): MerchantSale {
   return {
     id: row.id,
     productId: row.product_id,
-    productName: row.product_name,
+    productName: normalizeMerchantProductName(row.product_name),
     category: row.category,
     quantity: row.quantity,
     unitPrice: row.unit_price,
@@ -894,6 +1013,9 @@ function mapSaleRowToSale(row: SaleRow): MerchantSale {
     stockAfterSale: row.stock_after_sale,
     triggeredLowStock: row.triggered_low_stock,
     quickAddedProduct: row.quick_added_product || undefined,
+    quantityBase: row.quantity_base,
+    displayUnitName: row.display_unit_name,
+    unitSize: row.unit_size,
   };
 }
 
@@ -903,12 +1025,15 @@ function mapInventoryMovementRowToMovement(
   return {
     id: row.id,
     productId: row.product_id,
-    productName: row.product_name,
+    productName: normalizeMerchantProductName(row.product_name),
     reason: row.movement_type,
     quantityChange: row.quantity_change,
     stockAfter: row.stock_after,
     note: row.note ?? undefined,
     createdAt: row.created_at,
+    displayQuantity: row.display_quantity,
+    displayUnitName: row.display_unit_name,
+    unitSize: row.unit_size,
   };
 }
 
@@ -917,7 +1042,7 @@ export function toSaleRow(merchantId: string, sale: MerchantSale): SaleRow {
     id: sale.id,
     merchant_id: merchantId,
     product_id: sale.productId,
-    product_name: sale.productName,
+    product_name: normalizeMerchantProductName(sale.productName),
     category: sale.category,
     quantity: sale.quantity,
     unit_price: sale.unitPrice,
@@ -938,7 +1063,7 @@ export function toInventoryMovementRow(
     id: movement.id,
     merchant_id: merchantId,
     product_id: movement.productId,
-    product_name: movement.productName,
+    product_name: normalizeMerchantProductName(movement.productName),
     movement_type: movement.reason,
     quantity_change: movement.quantityChange,
     stock_after: movement.stockAfter,
@@ -953,7 +1078,7 @@ function mapActivityRowToActivity(row: ActivityFeedRow): MerchantActivity {
     type: row.type,
     tone: row.tone,
     title: row.title,
-    detail: row.detail,
+    detail: normalizeMerchantPackCountLabel(row.detail),
     createdAt: row.created_at,
   };
 }
@@ -968,7 +1093,7 @@ export function toActivityFeedRow(
     type: activity.type,
     tone: activity.tone,
     title: activity.title,
-    detail: activity.detail,
+    detail: normalizeMerchantPackCountLabel(activity.detail),
     created_at: activity.createdAt,
   };
 }
