@@ -124,8 +124,9 @@ function matchesOrdersFilter(order: MerchantOrder, filter: OrdersFilter): boolea
 
 export default function OrdersPage() {
   const router = useRouter();
-  const { setCartItems, startDraft } = useCart();
-  const { orders, launchDraftOrder, buildDraftFromOrder } = useMerchantData();
+  const { draftOrderId, setCartItems, startDraft } = useCart();
+  const { orders, launchDraftOrder, buildDraftFromOrder, deleteDraftOrder } =
+    useMerchantData();
   const [search, setSearch] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<MerchantOrder | null>(null);
   const [statusFilter, setStatusFilter] = useState<OrdersFilter>("all");
@@ -232,23 +233,56 @@ export default function OrdersPage() {
     router.push("/orders/new");
   }
 
+  async function handleDeleteDraft(order: MerchantOrder) {
+    if (!isEditableMerchantOrder(order.status)) return;
+
+    const shouldDelete = window.confirm(
+      `Supprimer le brouillon ${order.reference} ? Cette action retire le brouillon de Commandes.`
+    );
+    if (!shouldDelete) return;
+
+    try {
+      setActionError(null);
+      const deletedOrder = await deleteDraftOrder(order.id);
+
+      if (!deletedOrder) {
+        setActionError("Ce brouillon n'est plus disponible ou a déjà été envoyé.");
+        return;
+      }
+
+      if (draftOrderId === deletedOrder.id) {
+        startDraft("Orders");
+      }
+
+      if (selectedOrder?.id === deletedOrder.id) {
+        setSelectedOrder(null);
+      }
+    } catch (error) {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "Impossible de supprimer ce brouillon."
+      );
+    }
+  }
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 lg:space-y-8">
       {actionError ? (
         <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
           {actionError}
         </div>
       ) : null}
 
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <section className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-accent/80">
             Commandes
           </p>
-          <h1 className="mt-2 font-heading text-3xl font-bold tracking-tight text-gradient">
+          <h1 className="mt-1 font-heading text-2xl font-bold tracking-tight text-gradient lg:mt-2 lg:text-3xl">
             Créez et suivez vos commandes fournisseur au même endroit
           </h1>
-          <p className="mt-2 max-w-3xl text-sm text-secondary">
+          <p className="mt-2 hidden max-w-3xl text-sm text-secondary sm:block">
             Créez une nouvelle commande ou relancez un panier déjà utilisé en un clic.
           </p>
         </div>
@@ -262,62 +296,62 @@ export default function OrdersPage() {
         </button>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">Total commandes</p>
-          <p className="mt-2 font-heading text-3xl font-bold text-primary">
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+        <div className="glass-card rounded-xl p-3 lg:rounded-2xl lg:p-4">
+          <p className="truncate text-xs text-muted">Total commandes</p>
+          <p className="mt-1 font-heading text-xl font-bold text-primary lg:mt-2 lg:text-3xl">
             {orders.length}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Tous les paniers fournisseur enregistrés
           </p>
         </div>
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">Brouillons enregistrés</p>
-          <p className="mt-2 font-heading text-3xl font-bold text-amber-300">
+        <div className="glass-card rounded-xl p-3 lg:rounded-2xl lg:p-4">
+          <p className="truncate text-xs text-muted">Brouillons</p>
+          <p className="mt-1 font-heading text-xl font-bold text-amber-300 lg:mt-2 lg:text-3xl">
             {draftOrders.length}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Paniers modifiables non envoyés
           </p>
         </div>
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">Attente fournisseur</p>
-          <p className="mt-2 font-heading text-3xl font-bold text-yellow-300">
+        <div className="glass-card rounded-xl p-3 lg:rounded-2xl lg:p-4">
+          <p className="truncate text-xs text-muted">Attente fournisseur</p>
+          <p className="mt-1 font-heading text-xl font-bold text-yellow-300 lg:mt-2 lg:text-3xl">
             {waitingSupplierOrders.length}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Commandes envoyées en attente de réponse
           </p>
         </div>
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">En route</p>
-          <p className="mt-2 font-heading text-3xl font-bold text-cyan-300">
+        <div className="glass-card rounded-xl p-3 lg:rounded-2xl lg:p-4">
+          <p className="truncate text-xs text-muted">En route</p>
+          <p className="mt-1 font-heading text-xl font-bold text-cyan-300 lg:mt-2 lg:text-3xl">
             {onTheWayOrders.length}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Commandes confirmées ou déjà en acheminement
           </p>
         </div>
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">Réceptionnées</p>
-          <p className="mt-2 font-heading text-3xl font-bold text-emerald-300">
+        <div className="glass-card rounded-xl p-3 lg:rounded-2xl lg:p-4">
+          <p className="truncate text-xs text-muted">Réceptionnées</p>
+          <p className="mt-1 font-heading text-xl font-bold text-emerald-300 lg:mt-2 lg:text-3xl">
             {deliveredOrders.length}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Commandes fournisseur déjà reçues
           </p>
         </div>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.35fr_0.85fr]">
-        <div className="glass-card rounded-2xl p-5">
+        <div className="glass-card rounded-2xl p-4 lg:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="font-heading text-lg font-semibold text-primary">
                 Suivi des commandes
               </h2>
-              <p className="mt-1 text-sm text-secondary">
+              <p className="mt-1 hidden text-sm text-secondary sm:block">
                 Les brouillons restent modifiables ici. Les commandes envoyées restent en lecture, avec relance du panier si besoin.
               </p>
             </div>
@@ -373,7 +407,7 @@ export default function OrdersPage() {
             {filteredOrders.map((order) => (
               <div
                 key={order.id}
-                className="rounded-2xl border border-border bg-surface/50 p-4"
+                className="rounded-xl border border-border bg-surface/50 p-3 lg:rounded-2xl lg:p-4"
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0 flex-1">
@@ -390,7 +424,7 @@ export default function OrdersPage() {
                       </span>
                     </div>
 
-                    <p className="mt-3 text-base font-medium text-primary">
+                    <p className="mt-2 text-base font-medium text-primary lg:mt-3">
                       {order.supplierName}
                     </p>
                     <p className="mt-1 text-[11px] text-muted">
@@ -401,7 +435,7 @@ export default function OrdersPage() {
                       {order.items.length === 1 ? "" : "s"} |{" "}
                       {getMerchantOrderTotalUnits(order)} unités
                     </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="mt-3 hidden flex-wrap gap-2 sm:flex">
                       {getMerchantOrderItemPreview(order).map((itemPreview) => (
                         <span
                           key={`${order.id}-${itemPreview}`}
@@ -417,12 +451,12 @@ export default function OrdersPage() {
                         </span>
                       ) : null}
                     </div>
-                    <p className="mt-3 text-xs text-muted">
+                    <p className="mt-2 hidden text-xs text-muted sm:block lg:mt-3">
                       Livraison: {formatMerchantAddress(order.deliveryAddress)}
                     </p>
                   </div>
 
-                  <div className="flex min-w-[220px] flex-col items-start gap-3 lg:items-end">
+                  <div className="flex flex-col items-start gap-3 lg:min-w-[220px] lg:items-end">
                     <div className="text-left lg:text-right">
                       <p className="text-lg font-semibold text-accent">
                         {formatCdf(order.totalAmount)}
@@ -430,30 +464,37 @@ export default function OrdersPage() {
                       <p className="mt-1 text-xs text-muted">
                         Créée le {formatDateTime(order.createdAt)}
                       </p>
-                      <p className="mt-1 text-xs text-muted">
+                      <p className="mt-1 hidden text-xs text-muted sm:block">
                         Arrivée prévue {order.deliveryDate}
                       </p>
-                      <p className="mt-1 text-xs text-muted">
+                      <p className="mt-1 hidden text-xs text-muted sm:block">
                         {getOrderActionHint(order)}
                       </p>
                     </div>
 
-                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap lg:justify-end">
+                    <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:justify-end">
                       {isEditableMerchantOrder(order.status) ? (
                         <>
                           <button
                             type="button"
                             onClick={() => setSelectedOrder(order)}
-                            className="w-full rounded-xl border border-border px-3 py-3 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary sm:w-auto"
+                            className="rounded-xl border border-border px-3 py-3 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary sm:w-auto"
                           >
                             Voir le panier
                           </button>
                           <button
                             type="button"
                             onClick={() => handleResumeDraft(order)}
-                            className="w-full rounded-xl border border-accent/20 bg-accent/10 px-3 py-3 text-sm font-medium text-accent transition-colors hover:bg-accent/20 sm:w-auto"
+                            className="rounded-xl border border-accent/20 bg-accent/10 px-3 py-3 text-sm font-medium text-accent transition-colors hover:bg-accent/20 sm:w-auto"
                           >
                             Continuer le brouillon
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteDraft(order)}
+                            className="col-span-2 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-3 text-sm font-medium text-rose-200 transition-colors hover:bg-rose-500/20 sm:col-span-1 sm:w-auto"
+                          >
+                            Supprimer
                           </button>
                         </>
                       ) : isDeliveredMerchantOrder(order.status) ? (
@@ -461,14 +502,14 @@ export default function OrdersPage() {
                           <button
                             type="button"
                             onClick={() => setSelectedOrder(order)}
-                            className="w-full rounded-xl border border-border px-3 py-3 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary sm:w-auto"
+                            className="rounded-xl border border-border px-3 py-3 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary sm:w-auto"
                           >
                             Voir le panier
                           </button>
                           <button
                             type="button"
                             onClick={() => handleReorder(order.id)}
-                            className="w-full rounded-xl border border-accent/20 bg-accent/10 px-3 py-3 text-sm font-medium text-accent transition-colors hover:bg-accent/20 sm:w-auto"
+                            className="rounded-xl border border-accent/20 bg-accent/10 px-3 py-3 text-sm font-medium text-accent transition-colors hover:bg-accent/20 sm:w-auto"
                           >
                             Relancer le panier
                           </button>
@@ -510,7 +551,7 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="hidden space-y-4 xl:block">
           <div className="glass-card rounded-2xl p-5">
             <h2 className="font-heading text-lg font-semibold text-primary">
               À suivre

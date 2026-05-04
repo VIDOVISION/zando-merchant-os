@@ -175,6 +175,7 @@ interface MerchantDataContextValue {
   }>;
   launchDraftOrder: (input: LaunchDraftOrderInput) => Promise<MerchantOrder | null>;
   syncDraftOrder: (input: SyncDraftOrderInput) => Promise<void>;
+  deleteDraftOrder: (orderId: string) => Promise<MerchantOrder | null>;
   updateDeliveryStatus: (
     orderId: string,
     status: DeliveryTrackingStatus
@@ -1625,6 +1626,50 @@ export function MerchantDataProvider({
     [replaceOrderItems, upsertActivities, upsertOrders]
   );
 
+  const deleteDraftOrder = useCallback(
+    async (orderId: string): Promise<MerchantOrder | null> => {
+      const currentState = stateRef.current;
+      const draftOrder = currentState.orders.find(
+        (order) => order.id === orderId && order.status === "Draft"
+      );
+
+      if (!draftOrder) {
+        return null;
+      }
+
+      await replaceOrderItems(draftOrder.id, []);
+
+      const { error } = await supabase
+        .from("supplier_orders")
+        .delete()
+        .eq("merchant_id", merchantId)
+        .eq("id", draftOrder.id)
+        .eq("status", "Draft");
+
+      if (error) {
+        throw new Error(`Impossible de supprimer ce brouillon : ${error.message}`);
+      }
+
+      await deleteActivities([
+        `activity-${draftOrder.id}-draft`,
+        `activity-${draftOrder.id}-draft-update`,
+      ]);
+
+      setState((current) => ({
+        ...current,
+        orders: current.orders.filter((order) => order.id !== draftOrder.id),
+        activities: current.activities.filter(
+          (activity) =>
+            activity.id !== `activity-${draftOrder.id}-draft` &&
+            activity.id !== `activity-${draftOrder.id}-draft-update`
+        ),
+      }));
+
+      return draftOrder;
+    },
+    [deleteActivities, merchantId, replaceOrderItems, supabase]
+  );
+
   const updateDeliveryStatus = useCallback(
     async (
       orderId: string,
@@ -1880,6 +1925,7 @@ export function MerchantDataProvider({
         adjustInventoryProductStock,
         launchDraftOrder,
         syncDraftOrder,
+        deleteDraftOrder,
         updateDeliveryStatus,
         recordSale,
         voidLatestSale,
