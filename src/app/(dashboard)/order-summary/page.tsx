@@ -192,21 +192,21 @@ export default function OrderSummaryPage() {
 
   if (createdReferences.length > 0) {
     return (
-      <div className="max-w-3xl space-y-6">
+      <div className="max-w-3xl space-y-5 lg:space-y-6">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-accent/80">
             Commande confirmée
           </p>
-          <h1 className="mt-2 font-heading text-3xl font-bold tracking-tight text-gradient">
+          <h1 className="mt-1 font-heading text-2xl font-bold tracking-tight text-gradient lg:mt-2 lg:text-3xl">
             Vos commandes fournisseur sont bien enregistrées
           </h1>
-          <p className="mt-2 text-sm text-secondary">
+          <p className="mt-2 hidden text-sm text-secondary sm:block">
             Les nouvelles commandes apparaissent déjà dans Commandes et
             l'accueil a été mis à jour avec la dernière activité.
           </p>
         </div>
 
-        <div className="glass-card rounded-2xl p-8 text-center">
+        <div className="glass-card rounded-2xl p-5 text-center lg:p-8">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-accent/20 bg-accent/10">
             <svg
               className="h-7 w-7 text-accent"
@@ -253,17 +253,17 @@ export default function OrderSummaryPage() {
 
   if (items.length === 0) {
     return (
-      <div className="max-w-2xl space-y-6">
+      <div className="max-w-2xl space-y-5 lg:space-y-6">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-accent/80">
             Vérifier et confirmer
           </p>
-          <h1 className="mt-2 font-heading text-3xl font-bold tracking-tight text-gradient">
+          <h1 className="mt-1 font-heading text-2xl font-bold tracking-tight text-gradient lg:mt-2 lg:text-3xl">
             Votre brouillon est vide
           </h1>
         </div>
 
-        <div className="glass-card rounded-2xl p-10 text-center">
+        <div className="glass-card rounded-2xl p-6 text-center lg:p-10">
           <p className="text-sm text-secondary">
             Ajoutez des produits depuis le catalogue avant de confirmer une commande.
           </p>
@@ -279,7 +279,7 @@ export default function OrderSummaryPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-3xl space-y-5 lg:space-y-6">
       <div className="flex items-center gap-3">
         <Link
           href="/orders/new"
@@ -305,7 +305,7 @@ export default function OrderSummaryPage() {
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-accent/80">
             Vérifier et confirmer
           </p>
-          <h1 className="mt-1 font-heading text-3xl font-bold tracking-tight text-gradient">
+          <h1 className="mt-1 font-heading text-2xl font-bold tracking-tight text-gradient lg:text-3xl">
             Vérifiez puis envoyez la commande
           </h1>
           <p className="mt-1 text-sm text-secondary">
@@ -314,7 +314,7 @@ export default function OrderSummaryPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-accent/20 bg-accent/5 p-4">
+      <div className="rounded-2xl border border-accent/20 bg-accent/5 p-3 lg:p-4">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full border border-accent/20 bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent">
             {sourceLabel}
@@ -331,33 +331,33 @@ export default function OrderSummaryPage() {
             </span>
           ) : null}
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-border bg-surface/50 p-4">
-            <p className="text-xs text-muted">Fournisseur</p>
-            <p className="mt-2 text-sm font-medium text-primary">
+        <div className="mt-3 grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <div className="rounded-xl border border-border bg-surface/50 p-3 lg:rounded-2xl lg:p-4">
+            <p className="truncate text-xs text-muted">Fournisseur</p>
+            <p className="mt-1 truncate text-sm font-medium text-primary lg:mt-2">
               {supplierLabel}
             </p>
           </div>
-          <div className="rounded-2xl border border-border bg-surface/50 p-4">
-            <p className="text-xs text-muted">Lignes</p>
-            <p className="mt-2 text-lg font-semibold text-primary">
+          <div className="rounded-xl border border-border bg-surface/50 p-3 lg:rounded-2xl lg:p-4">
+            <p className="truncate text-xs text-muted">Lignes</p>
+            <p className="mt-1 text-lg font-semibold text-primary lg:mt-2">
               {items.length}
             </p>
           </div>
-          <div className="rounded-2xl border border-border bg-surface/50 p-4">
-            <p className="text-xs text-muted">Quantité achat</p>
-            <p className="mt-2 text-lg font-semibold text-primary">
+          <div className="rounded-xl border border-border bg-surface/50 p-3 lg:rounded-2xl lg:p-4">
+            <p className="truncate text-xs text-muted">Quantité achat</p>
+            <p className="mt-1 text-lg font-semibold text-primary lg:mt-2">
               {totalItems}
             </p>
           </div>
-          <div className="rounded-2xl border border-border bg-surface/50 p-4">
-            <p className="text-xs text-muted">Total du panier</p>
-            <p className="mt-2 text-lg font-semibold text-accent">
+          <div className="rounded-xl border border-border bg-surface/50 p-3 lg:rounded-2xl lg:p-4">
+            <p className="truncate text-xs text-muted">Total du panier</p>
+            <p className="mt-1 text-lg font-semibold text-accent lg:mt-2">
               {formatCdf(totalAmount)}
             </p>
           </div>
         </div>
-        <p className="mt-4 text-sm text-secondary">
+        <p className="mt-4 hidden text-sm text-secondary sm:block">
           {currentDraftOrder
             ? `${currentDraftOrder.reference} est déjà enregistré dans Commandes. ${draftStatusDescription} Vous pouvez encore modifier les quantités ou retirer des lignes avant de confirmer.`
             : `${draftStatusDescription} Il ne deviendra une commande active qu'après confirmation ci-dessous.`}
@@ -365,11 +365,11 @@ export default function OrderSummaryPage() {
       </div>
 
       <div className="glass-card overflow-hidden rounded-2xl">
-        <div className="border-b border-border px-5 py-4">
+        <div className="border-b border-border px-4 py-3 lg:px-5 lg:py-4">
           <h2 className="font-heading text-lg font-semibold text-primary">
             Vérification du panier
           </h2>
-          <p className="mt-1 text-sm text-secondary">
+          <p className="mt-1 hidden text-sm text-secondary sm:block">
             Vérifiez les quantités, retirez ce qu'il faut, puis confirmez le
             panier quand il est prêt à être envoyé.
           </p>
@@ -378,24 +378,30 @@ export default function OrderSummaryPage() {
           {items.map((item) => (
             <div
               key={item.id}
-              className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between"
+              className="flex flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-5 lg:py-4"
             >
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-primary">{item.name}</p>
-                <p className="mt-1 text-xs text-muted">
+                <p className="mt-1 truncate text-xs text-muted">
                   {item.supplier}
                 </p>
-                <div className="mt-3 flex flex-wrap gap-4 text-xs text-secondary">
-                  <span>Prix unitaire {formatCdf(item.unit_price)}</span>
-                  <span>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-secondary lg:mt-3 lg:gap-4">
+                  <span className="rounded-full border border-border bg-surface/50 px-2 py-1">
+                    Prix {formatCdf(item.unit_price)}
+                  </span>
+                  <span className="hidden rounded-full border border-border bg-surface/50 px-2 py-1 sm:inline">
                     Minimum{" "}
                     {formatMerchantMinimumPurchaseQuantity(item.min_order, {
                       purchaseUnitName: item.display_unit_name,
                     })}
                   </span>
-                  <span>Commandé : {getCartItemPurchaseLabel(item)}</span>
+                  <span className="rounded-full border border-accent/20 bg-accent/10 px-2 py-1 text-accent">
+                    Commandé : {getCartItemPurchaseLabel(item)}
+                  </span>
                   {getCartItemStockEquivalentLabel(item) ? (
-                    <span>{getCartItemStockEquivalentLabel(item)}</span>
+                    <span className="rounded-full border border-border bg-surface/50 px-2 py-1">
+                      {getCartItemStockEquivalentLabel(item)}
+                    </span>
                   ) : null}
                 </div>
               </div>
@@ -441,7 +447,7 @@ export default function OrderSummaryPage() {
           ))}
         </div>
 
-        <div className="flex items-center justify-between border-t border-border bg-surface-bright px-5 py-4">
+        <div className="flex items-center justify-between border-t border-border bg-surface-bright px-4 py-3 lg:px-5 lg:py-4">
           <span className="text-sm font-semibold text-primary">Total</span>
           <span className="font-heading text-2xl font-bold text-accent">
             {formatCdf(totalAmount)}
@@ -449,11 +455,11 @@ export default function OrderSummaryPage() {
         </div>
       </div>
 
-      <div className="glass-card rounded-2xl p-5">
+      <div className="glass-card rounded-2xl p-4 lg:p-5">
         <h2 className="font-heading text-lg font-semibold text-primary">
           Détails de livraison
         </h2>
-        <div className="mt-4 space-y-4">
+        <div className="mt-3 space-y-3 lg:mt-4 lg:space-y-4">
           <div>
             <label
               htmlFor="address"
@@ -483,7 +489,7 @@ export default function OrderSummaryPage() {
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               placeholder="Note optionnelle pour le fournisseur, la réception ou l'horaire souhaité."
-              rows={3}
+              rows={2}
               className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-primary placeholder:text-muted focus:border-accent/40 focus:outline-none focus:ring-1 focus:ring-accent/30"
             />
           </div>
@@ -500,7 +506,7 @@ export default function OrderSummaryPage() {
         type="button"
         onClick={handleConfirm}
         disabled={isSubmitting}
-        className="accent-gradient btn-shine w-full rounded-xl py-3 text-sm font-medium text-background disabled:cursor-not-allowed disabled:opacity-60"
+        className="accent-gradient btn-shine w-full rounded-xl py-3.5 text-sm font-medium text-background disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSubmitting ? "Confirmation en cours..." : "Confirmer la commande"}
       </button>
