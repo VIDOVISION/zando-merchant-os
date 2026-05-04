@@ -550,7 +550,7 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 lg:space-y-8">
       {feedback ? (
         <div
           className={`rounded-xl border px-4 py-3 text-sm ${
@@ -563,38 +563,38 @@ export default function InventoryPage() {
         </div>
       ) : null}
 
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <section className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-accent/80">
             Stock
           </p>
-          <h1 className="mt-2 font-heading text-3xl font-bold tracking-tight text-gradient">
+          <h1 className="mt-1 font-heading text-2xl font-bold tracking-tight text-gradient lg:mt-2 lg:text-3xl">
             Pilotez le stock et gardez les rayons prêts à vendre
           </h1>
-          <p className="mt-2 text-sm text-secondary">
+          <p className="mt-2 hidden text-sm text-secondary sm:block">
             Le stock devient ici un vrai poste de contrôle marchand : ajoutez un
             produit, mettez à jour ses données utiles, ajustez les quantités et
             suivez les derniers mouvements sans alourdir le MVP.
           </p>
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
             <button
               type="button"
               onClick={openCreatePanel}
-              className="accent-gradient btn-shine w-full rounded-xl px-4 py-3 text-sm font-medium text-background sm:w-auto"
+              className="accent-gradient btn-shine rounded-xl px-3 py-3 text-sm font-medium text-background sm:w-auto sm:px-4"
             >
               Ajouter un produit
             </button>
             <button
               type="button"
               onClick={() => openAdjustPanel()}
-              className="w-full rounded-xl border border-border bg-surface/60 px-4 py-3 text-sm font-medium text-primary transition-colors hover:border-accent/30 hover:text-accent sm:w-auto"
+              className="rounded-xl border border-border bg-surface/60 px-3 py-3 text-sm font-medium text-primary transition-colors hover:border-accent/30 hover:text-accent sm:w-auto sm:px-4"
             >
               Ajuster le stock
             </button>
           </div>
         </div>
 
-        <div className="glass-card flex w-full max-w-xl flex-col gap-3 rounded-2xl p-4 lg:min-w-[360px]">
+        <div className="glass-card flex w-full max-w-xl flex-col gap-3 rounded-2xl p-3 lg:min-w-[360px] lg:p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-muted">Réappro urgent</p>
@@ -615,7 +615,7 @@ export default function InventoryPage() {
                 key={product.id}
                 type="button"
                 onClick={() => handleReorder(product.id)}
-                className="flex w-full items-center justify-between rounded-xl border border-border bg-surface/60 px-3 py-3 text-left transition-colors hover:border-accent/40 hover:bg-surface-bright"
+                className="flex w-full items-center justify-between rounded-xl border border-border bg-surface/60 px-3 py-2.5 text-left transition-colors hover:border-accent/40 hover:bg-surface-bright lg:py-3"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-primary">
@@ -1359,40 +1359,40 @@ export default function InventoryPage() {
         </section>
       ) : null}
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">Stock correct</p>
-          <p className="mt-2 font-heading text-3xl font-bold text-emerald-300">
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div className="glass-card rounded-xl p-3 lg:rounded-2xl lg:p-4">
+          <p className="truncate text-xs text-muted">Stock correct</p>
+          <p className="mt-1 font-heading text-xl font-bold text-emerald-300 lg:mt-2 lg:text-3xl">
             {healthyCount}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Produits actifs au-dessus du seuil de réappro
           </p>
         </div>
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">Stock bas</p>
-          <p className="mt-2 font-heading text-3xl font-bold text-amber-300">
+        <div className="glass-card rounded-xl p-3 lg:rounded-2xl lg:p-4">
+          <p className="truncate text-xs text-muted">Stock bas</p>
+          <p className="mt-1 font-heading text-xl font-bold text-amber-300 lg:mt-2 lg:text-3xl">
             {lowStockCount}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Réappro à préparer cette semaine
           </p>
         </div>
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">Rupture</p>
-          <p className="mt-2 font-heading text-3xl font-bold text-rose-300">
+        <div className="glass-card rounded-xl p-3 lg:rounded-2xl lg:p-4">
+          <p className="truncate text-xs text-muted">Rupture</p>
+          <p className="mt-1 font-heading text-xl font-bold text-rose-300 lg:mt-2 lg:text-3xl">
             {outOfStockCount}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Risque de ventes perdues sur rayon vide
           </p>
         </div>
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">Stock attendu</p>
-          <p className="mt-2 font-heading text-3xl font-bold text-accent">
+        <div className="glass-card rounded-xl p-3 lg:rounded-2xl lg:p-4">
+          <p className="truncate text-xs text-muted">Stock attendu</p>
+          <p className="mt-1 font-heading text-xl font-bold text-accent lg:mt-2 lg:text-3xl">
             {unitsOnOrder}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Dans {trackedInboundOrdersCount} commande
             {trackedInboundOrdersCount === 1 ? "" : "s"} envoyée
             {trackedInboundOrdersCount === 1 ? "" : "s"} ou en route
@@ -1400,13 +1400,13 @@ export default function InventoryPage() {
         </div>
       </section>
 
-      <section className="glass-card rounded-2xl p-5">
+      <section className="glass-card rounded-2xl p-4 lg:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="font-heading text-lg font-semibold text-primary">
               Table de contrôle du stock
             </h2>
-            <p className="mt-1 text-sm text-secondary">
+            <p className="mt-1 hidden text-sm text-secondary sm:block">
               Recherchez un article, repérez son état, puis modifiez ou ajustez-le
               directement depuis la même page.
             </p>
@@ -1463,7 +1463,7 @@ export default function InventoryPage() {
           {filteredProducts.map((product) => (
             <div
               key={`mobile-${product.id}`}
-              className={`rounded-2xl border border-border bg-surface/50 p-4 ${
+              className={`rounded-xl border border-border bg-surface/50 p-3 lg:rounded-2xl lg:p-4 ${
                 product.isActive ? "" : "opacity-75"
               }`}
             >
@@ -1501,56 +1501,56 @@ export default function InventoryPage() {
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-border bg-surface/40 p-3">
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="rounded-xl border border-border bg-surface/40 p-2.5 sm:p-3">
                   <p className="text-xs text-muted">Stock</p>
-                  <p className="mt-1 text-sm font-medium text-primary">
+                  <p className="mt-1 text-sm font-medium leading-tight text-primary">
                     {getInventoryStockLabel(product)}
                   </p>
-                  <p className="mt-1 text-xs text-secondary">
+                  <p className="mt-1 hidden text-xs text-secondary sm:block">
                     Seuil {product.reorderPoint}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-border bg-surface/40 p-3">
+                <div className="rounded-xl border border-border bg-surface/40 p-2.5 sm:p-3">
                   <p className="text-xs text-muted">En commande</p>
-                  <p className="mt-1 text-sm font-medium text-primary">
+                  <p className="mt-1 text-sm font-medium leading-tight text-primary">
                     {getInventoryOnOrderLabel(product)}
                   </p>
-                  <p className="mt-1 text-xs text-secondary">
+                  <p className="mt-1 hidden text-xs text-secondary sm:block">
                     Réappro {getInventoryReorderLabel(product)}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-border bg-surface/40 p-3">
+                <div className="rounded-xl border border-border bg-surface/40 p-2.5 sm:p-3">
                   <p className="text-xs text-muted">Prix</p>
-                  <p className="mt-1 text-sm font-medium text-accent">
+                  <p className="mt-1 text-sm font-medium leading-tight text-accent">
                     {formatCdf(product.unitPrice)}
                   </p>
-                  <p className="mt-1 text-xs text-secondary">
+                  <p className="mt-1 hidden text-xs text-secondary sm:block">
                     Vente {formatCdf(product.sellingPrice)}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-col gap-2">
+              <div className="mt-3 grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => openAdjustPanel(product.id)}
-                  className="w-full rounded-xl border border-border px-4 py-3 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary"
+                  className="rounded-xl border border-border px-3 py-3 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary"
                 >
-                  Ajuster le stock
+                  Ajuster
                 </button>
                 <button
                   type="button"
                   onClick={() => openEditPanel(product)}
-                  className="w-full rounded-xl border border-border px-4 py-3 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary"
+                  className="rounded-xl border border-border px-3 py-3 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary"
                 >
-                  Modifier le produit
+                  Modifier
                 </button>
                 <button
                   type="button"
                   onClick={() => handleReorder(product.id)}
                   disabled={!product.isActive}
-                  className={`w-full rounded-xl border px-4 py-3 text-sm font-medium transition-colors ${
+                  className={`col-span-2 rounded-xl border px-3 py-3 text-sm font-medium transition-colors ${
                     !product.isActive
                       ? "cursor-not-allowed border-border text-muted opacity-60"
                       : product.stockStatus === "Healthy"
