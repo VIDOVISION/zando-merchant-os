@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Sidebar, { SidebarProvider } from "@/components/dashboard/Sidebar";
 import TopNav from "@/components/dashboard/TopNav";
+import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 import { CartProvider } from "@/components/cart/CartContext";
 import CartDrawer from "@/components/cart/CartDrawer";
 import { MerchantDataProvider } from "@/components/merchant/MerchantDataContext";
@@ -48,11 +49,12 @@ export default async function DashboardLayout({
                   user_metadata: user.user_metadata as Record<string, string>,
                 }}
               />
-              <main className="flex-1 p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8 lg:pb-8">
+              <main className="flex-1 p-4 pb-28 sm:p-6 sm:pb-28 lg:p-8 lg:pb-8">
                 {children}
               </main>
             </div>
           </div>
+          <MobileBottomNav />
           <CartDrawer />
         </MerchantDataProvider>
       </CartProvider>

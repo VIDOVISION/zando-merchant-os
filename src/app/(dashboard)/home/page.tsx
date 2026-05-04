@@ -300,69 +300,78 @@ export default function HomePage() {
         </div>
       ) : null}
 
-      <section className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+      <section className="glass-card rounded-2xl border border-accent/20 bg-accent/5 p-4 sm:p-5">
         <div className="max-w-3xl">
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-accent/80">
-            Accueil
+            Boutique aujourd'hui
           </p>
-          <h1 className="mt-2 font-heading text-3xl font-bold tracking-tight text-gradient">
-            {state.profile.storeName} aujourd'hui
+          <h1 className="mt-2 font-heading text-2xl font-bold tracking-tight text-gradient sm:text-3xl">
+            {state.profile.storeName}
           </h1>
           <p className="mt-2 text-sm text-secondary">
-            Tout ce qui compte pour la boutique à {state.profile.neighborhood},{" "}
-            {state.profile.city} : stock à surveiller, commandes fournisseur,
-            ventes du jour et activité récente.
+            {state.profile.neighborhood}, {state.profile.city} · vendez vite,
+            puis traitez les stocks et paniers fournisseur à suivre.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleStartNewOrder}
-          className="accent-gradient btn-shine w-full rounded-xl px-4 py-3 text-sm font-medium text-background sm:w-auto"
-        >
-          Nouvelle commande
-        </button>
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <Link
+            href="/sales"
+            className="accent-gradient btn-shine flex min-h-12 items-center justify-center rounded-xl px-4 py-3 text-sm font-medium text-background"
+          >
+            Enregistrer une vente
+          </Link>
+          <button
+            type="button"
+            onClick={handleStartNewOrder}
+            className="flex min-h-12 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 px-4 py-3 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
+          >
+            Nouvelle commande
+          </button>
+          <Link
+            href="/inventory"
+            className="flex min-h-12 items-center justify-center rounded-xl border border-border px-4 py-3 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary"
+          >
+            Voir le stock
+          </Link>
+        </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">Alertes stock</p>
-          <p className="mt-2 font-heading text-3xl font-bold text-amber-300">
+      <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="rounded-xl border border-border bg-surface/50 p-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">À traiter</p>
+          <p className="mt-1 text-xl font-semibold text-amber-300">
             {lowStockProducts.length}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Rayons à réapprovisionner
           </p>
         </div>
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">Commandes en cours</p>
-          <p className="mt-2 font-heading text-3xl font-bold text-accent">
+        <div className="rounded-xl border border-border bg-surface/50 p-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Commandes</p>
+          <p className="mt-1 text-xl font-semibold text-accent">
             {activeOrders.length}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Brouillons et commandes fournisseur en suivi
           </p>
         </div>
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">Ventes du jour</p>
-          <p className="mt-2 font-heading text-3xl font-bold text-primary">
-            {formatCdf(salesTodayValue)}
+        <div className="rounded-xl border border-border bg-surface/50 p-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Ventes</p>
+          <p className="mt-1 text-xl font-semibold text-primary">
+            {todaySales.length}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             {todaySales.length} vente{todaySales.length === 1 ? "" : "s"} enregistrée{todaySales.length === 1 ? "" : "s"} aujourd'hui
           </p>
         </div>
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs text-muted">Dernier panier</p>
-          <p className="mt-2 font-heading text-3xl font-bold text-primary">
-            {repeatBasketOrder
-              ? formatCdf(repeatBasketOrder.totalAmount)
-              : "--"}
+        <div className="rounded-xl border border-border bg-surface/50 p-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">CA jour</p>
+          <p className="mt-1 truncate text-xl font-semibold text-primary">
+            {formatCdf(salesTodayValue)}
           </p>
-          <p className="mt-1 text-xs text-secondary">
-            {latestSavedBasketDraft
-              ? "Montant du brouillon en cours"
-              : "Relancer vite le dernier panier confirmé"}
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
+            Total encaissé aujourd'hui
           </p>
         </div>
       </section>
@@ -373,7 +382,7 @@ export default function HomePage() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-heading text-lg font-semibold text-primary">
-                  Alertes stock
+                  À traiter
                 </h2>
                 <p className="mt-1 text-sm text-secondary">
                   Commencez par les rayons qui peuvent bloquer les ventes.
