@@ -155,22 +155,22 @@ export default function DeliveriesPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 lg:space-y-8">
       {actionError ? (
         <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
           {actionError}
         </div>
       ) : null}
 
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <section className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-accent/80">
             Livraisons
           </p>
-          <h1 className="mt-2 font-heading text-3xl font-bold tracking-tight text-gradient">
+          <h1 className="mt-1 font-heading text-2xl font-bold tracking-tight text-gradient lg:mt-2 lg:text-3xl">
             Suivez les arrivages après l’envoi de la commande
           </h1>
-          <p className="mt-2 max-w-3xl text-sm text-secondary">
+          <p className="mt-2 hidden max-w-3xl text-sm text-secondary sm:block">
             Les livraisons commencent seulement après l’envoi au fournisseur.
             Les brouillons restent dans Commandes jusqu’à confirmation. Cette page
             sert à suivre ce qui attend une réponse, ce qui est en route, et ce qui
@@ -180,58 +180,58 @@ export default function DeliveriesPage() {
 
         <Link
           href="/orders"
-          className="accent-gradient btn-shine rounded-xl px-4 py-2.5 text-sm font-medium text-background"
+          className="accent-gradient btn-shine rounded-xl px-4 py-3 text-center text-sm font-medium text-background sm:py-2.5"
         >
           Ouvrir les commandes
         </Link>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="glass-card rounded-2xl p-4">
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div className="glass-card rounded-xl p-3 lg:rounded-2xl lg:p-4">
           <p className="text-xs text-muted">En attente fournisseur</p>
-          <p className="mt-2 font-heading text-3xl font-bold text-yellow-300">
+          <p className="mt-1 font-heading text-xl font-bold text-yellow-300 lg:mt-2 lg:text-3xl">
             {awaitingCount}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Commandes envoyées encore sans confirmation fournisseur
           </p>
         </div>
-        <div className="glass-card rounded-2xl p-4">
+        <div className="glass-card rounded-xl p-3 lg:rounded-2xl lg:p-4">
           <p className="text-xs text-muted">En route</p>
-          <p className="mt-2 font-heading text-3xl font-bold text-sky-300">
+          <p className="mt-1 font-heading text-xl font-bold text-sky-300 lg:mt-2 lg:text-3xl">
             {movingCount}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Stock confirmé et déjà en route vers la boutique
           </p>
         </div>
-        <div className="glass-card rounded-2xl p-4">
+        <div className="glass-card rounded-xl p-3 lg:rounded-2xl lg:p-4">
           <p className="text-xs text-muted">Réceptionnées</p>
-          <p className="mt-2 font-heading text-3xl font-bold text-emerald-300">
+          <p className="mt-1 font-heading text-xl font-bold text-emerald-300 lg:mt-2 lg:text-3xl">
             {deliveredCount}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Commandes déjà reçues dans le stock boutique
           </p>
         </div>
-        <div className="glass-card rounded-2xl p-4">
+        <div className="glass-card rounded-xl p-3 lg:rounded-2xl lg:p-4">
           <p className="text-xs text-muted">À suivre</p>
-          <p className="mt-2 font-heading text-3xl font-bold text-amber-300">
+          <p className="mt-1 font-heading text-xl font-bold text-amber-300 lg:mt-2 lg:text-3xl">
             {delayedCount}
           </p>
-          <p className="mt-1 text-xs text-secondary">
+          <p className="mt-1 hidden text-xs text-secondary sm:block">
             Livraisons dont la date prévue est dépassée
           </p>
         </div>
       </section>
 
-      <section className="glass-card rounded-2xl p-5">
+      <section className="glass-card rounded-2xl p-4 lg:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="font-heading text-lg font-semibold text-primary">
               Étape de livraison
             </h2>
-            <p className="mt-1 text-sm text-secondary">
+            <p className="mt-1 hidden text-sm text-secondary sm:block">
               Filtrez les arrivages selon les quelques étapes qu’un commerçant suit vraiment.
             </p>
           </div>
@@ -242,7 +242,7 @@ export default function DeliveriesPage() {
           </p>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
           {FILTER_OPTIONS.map((filter) => {
             const isActive = statusFilter === filter;
 
@@ -251,7 +251,7 @@ export default function DeliveriesPage() {
                 key={filter}
                 type="button"
                 onClick={() => setStatusFilter(filter)}
-                className={`rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
+                className={`whitespace-nowrap rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
                   isActive
                     ? "border-accent/30 bg-accent/15 text-accent"
                     : "border-border bg-surface/50 text-secondary hover:border-accent/20 hover:text-primary"
@@ -275,7 +275,7 @@ export default function DeliveriesPage() {
         </div>
 
         {filteredOrders.length === 0 ? (
-          <div className="glass-card rounded-2xl p-10 text-center">
+          <div className="glass-card rounded-2xl p-6 text-center lg:p-10">
             <p className="text-sm text-secondary">
               Aucune livraison ne correspond à cette étape pour le moment.
             </p>
@@ -287,7 +287,7 @@ export default function DeliveriesPage() {
             </Link>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3 lg:space-y-4">
             {filteredOrders.map((order) => {
               const totalUnits = getMerchantOrderTotalUnits(order);
               const itemPreview = getMerchantOrderItemPreview(order);
@@ -301,8 +301,8 @@ export default function DeliveriesPage() {
                     : ORDER_STATUS_COLORS.Pending;
 
               return (
-                <div key={order.id} className="glass-card rounded-2xl p-5">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div key={order.id} className="glass-card rounded-xl p-4 lg:rounded-2xl lg:p-5">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-mono text-sm font-semibold text-primary">
@@ -321,7 +321,7 @@ export default function DeliveriesPage() {
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-3 text-sm font-medium text-primary">
+                      <p className="mt-2 text-sm font-medium text-primary lg:mt-3">
                         {order.supplierName}
                       </p>
                       <p className="mt-1 text-xs text-muted">
@@ -335,17 +335,17 @@ export default function DeliveriesPage() {
                       <p className="text-lg font-semibold text-accent">
                         {formatCdf(order.totalAmount)}
                       </p>
-                      <p className="mt-1 text-xs text-secondary">
+                      <p className="mt-1 hidden text-xs text-secondary sm:block">
                         {getDeliveryStatusSummary(order)}
                       </p>
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-2xl border border-border bg-surface/40 p-4">
+                  <div className="mt-3 rounded-xl border border-border bg-surface/40 p-3 lg:mt-4 lg:rounded-2xl lg:p-4">
                     <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted">
                       Résumé du panier
                     </p>
-                    <p className="mt-3 text-sm text-primary">
+                    <p className="mt-2 line-clamp-2 text-sm text-primary lg:mt-3">
                       {itemPreview.join(" | ")}
                     </p>
                     {order.items.length > itemPreview.length ? (
@@ -357,11 +357,11 @@ export default function DeliveriesPage() {
                     ) : null}
                   </div>
 
-                  <div className="mt-4 flex flex-wrap justify-end gap-2">
+                  <div className="mt-3 grid grid-cols-2 gap-2 lg:mt-4 lg:flex lg:flex-wrap lg:justify-end">
                     <button
                       type="button"
                       onClick={() => setSelectedOrderId(order.id)}
-                      className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary"
+                      className="rounded-xl border border-border px-3 py-3 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary lg:px-4 lg:py-2.5"
                     >
                       Voir la commande
                     </button>
@@ -369,7 +369,7 @@ export default function DeliveriesPage() {
                       <button
                         type="button"
                         onClick={() => handleAdvanceStatus(order)}
-                        className="accent-gradient btn-shine rounded-xl px-4 py-2.5 text-sm font-medium text-background"
+                        className="accent-gradient btn-shine rounded-xl px-3 py-3 text-sm font-medium text-background lg:px-4 lg:py-2.5"
                       >
                         {actionLabel}
                       </button>
