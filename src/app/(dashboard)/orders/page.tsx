@@ -435,11 +435,11 @@ export default function OrdersPage() {
                       {order.items.length === 1 ? "" : "s"} |{" "}
                       {getMerchantOrderTotalUnits(order)} unités
                     </p>
-                    <div className="mt-3 hidden flex-wrap gap-2 sm:flex">
+                    <div className="mt-3 flex flex-wrap gap-2">
                       {getMerchantOrderItemPreview(order).map((itemPreview) => (
                         <span
                           key={`${order.id}-${itemPreview}`}
-                          className="rounded-full border border-border bg-surface-bright/60 px-2.5 py-1 text-xs text-secondary"
+                          className="max-w-full truncate rounded-full border border-border bg-surface-bright/60 px-2.5 py-1 text-xs text-secondary"
                         >
                           {itemPreview}
                         </span>

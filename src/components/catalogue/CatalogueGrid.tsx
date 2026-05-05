@@ -1,6 +1,7 @@
 "use client";
 
 import { useCart } from "@/components/cart/CartContext";
+import ProductThumb from "@/components/catalogue/ProductThumb";
 import {
   formatCdf,
   formatMerchantBaseQuantity,
@@ -45,16 +46,19 @@ export default function CatalogueGrid({
             className="glass-card card-glow flex flex-col gap-4 rounded-2xl p-4"
           >
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-base font-medium leading-tight text-primary">
-                  {product.name}
-                </p>
-                <p className="mt-1 text-xs text-muted">
-                  {product.supplier} | {product.neighborhood}
-                </p>
+              <div className="flex min-w-0 items-start gap-3">
+                <ProductThumb product={product} />
+                <div className="min-w-0">
+                  <p className="text-base font-medium leading-tight text-primary">
+                    {product.name}
+                  </p>
+                  <p className="mt-1 text-xs text-muted">
+                    {product.supplier} | {product.neighborhood}
+                  </p>
+                </div>
               </div>
               <span
-                className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium ${
                   STOCK_STYLES[product.stockStatus]
                 }`}
               >

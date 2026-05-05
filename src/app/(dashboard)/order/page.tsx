@@ -19,6 +19,29 @@ import {
 } from "@/lib/merchant-data";
 
 const NEW_ORDER_REVIEW_HREF = "/order-summary";
+const MVP_DRINK_CATALOG_SLUGS = new Set([
+  "beaufort-lager-33cl",
+  "heineken-33cl",
+  "vitalo-50cl",
+  "nkoyi-black-33cl",
+  "nkoyi-blonde-33cl",
+  "castel-beer-33cl",
+  "tembo-33cl",
+  "fanta-orange-50cl",
+]);
+
+function toOrderCatalogSlug(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function getOrderCatalogProductSlug(productId: string): string {
+  return productId.split(":").pop() ?? productId;
+}
 
 function getCartItemPurchaseLabel(item: CartItem): string {
   const inferredConfig = inferMerchantProductUnitConfig({
@@ -92,12 +115,23 @@ export default function OrderPage() {
   const [categoryFilter, setCategoryFilter] = useState("All");
   const deferredSearch = useDeferredValue(search.trim().toLowerCase());
 
+  const mvpDrinkProducts = inventory.filter((product) => {
+    const productIdSlug = getOrderCatalogProductSlug(product.id);
+    const productNameSlug = toOrderCatalogSlug(product.name);
+
+    return (
+      product.isActive &&
+      (MVP_DRINK_CATALOG_SLUGS.has(productIdSlug) ||
+        MVP_DRINK_CATALOG_SLUGS.has(productNameSlug))
+    );
+  });
+
   const categories = [
     "All",
-    ...Array.from(new Set(inventory.map((product) => product.category))),
+    ...Array.from(new Set(mvpDrinkProducts.map((product) => product.category))),
   ];
 
-  const filteredProducts = inventory.filter((product) => {
+  const filteredProducts = mvpDrinkProducts.filter((product) => {
     const matchesSearch =
       deferredSearch.length === 0 ||
       [product.name, product.supplier, product.neighborhood]

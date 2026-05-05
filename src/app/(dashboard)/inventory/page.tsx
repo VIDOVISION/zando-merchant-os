@@ -221,6 +221,7 @@ export default function InventoryPage() {
     activeOrders,
     createInventoryProduct,
     updateInventoryProduct,
+    deleteInventoryProduct,
     adjustInventoryProductStock,
   } = useMerchantData();
   const [search, setSearch] = useState("");
@@ -243,7 +244,7 @@ export default function InventoryPage() {
   const deferredSearch = useDeferredValue(search.trim().toLowerCase());
 
   const activeProducts = inventory.filter((product) => product.isActive);
-  const filteredProducts = inventory.filter((product) => {
+  const filteredProducts = activeProducts.filter((product) => {
     const matchesSearch =
       deferredSearch.length === 0 ||
       [
@@ -497,6 +498,45 @@ export default function InventoryPage() {
           error instanceof Error
             ? error.message
             : "Impossible d'enregistrer ce produit pour le moment.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleDeleteProduct(product: InventoryProduct) {
+    const confirmed = window.confirm(
+      `Supprimer ${product.name} du stock actif ? L'historique des ventes et commandes restera conservé.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsSaving(true);
+    resetFeedback();
+
+    try {
+      const deletedProduct = await deleteInventoryProduct({
+        productId: product.id,
+      });
+
+      setSelectedProductId(null);
+      setEditForm(null);
+      setControlMode(null);
+      setFeedback({
+        type: "success",
+        text: deletedProduct
+          ? `${deletedProduct.name} a été supprimé du stock actif.`
+          : "Ce produit n'est plus dans le stock actif.",
+      });
+    } catch (error) {
+      setFeedback({
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Impossible de supprimer ce produit du stock.",
       });
     } finally {
       setIsSaving(false);
@@ -967,6 +1007,14 @@ export default function InventoryPage() {
                 <div className="flex flex-wrap justify-end gap-2">
                   <button
                     type="button"
+                    onClick={() => handleDeleteProduct(selectedProduct)}
+                    disabled={isSaving}
+                    className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-2.5 text-sm font-medium text-rose-200 transition-colors hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Supprimer du stock
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => openAdjustPanel(selectedProduct.id)}
                     className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-secondary transition-colors hover:border-accent/30 hover:text-primary"
                   >
@@ -1251,6 +1299,14 @@ export default function InventoryPage() {
                     className="w-full rounded-xl border border-accent/20 bg-accent/10 px-3 py-3 text-sm font-medium text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                   >
                     Préparer le réappro
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteProduct(selectedProduct)}
+                    disabled={isSaving}
+                    className="w-full rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-3 text-sm font-medium text-rose-200 transition-colors hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                  >
+                    Supprimer du stock
                   </button>
                 </div>
 
@@ -1560,6 +1616,14 @@ export default function InventoryPage() {
                 >
                   Préparer le réappro
                 </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteProduct(product)}
+                  disabled={isSaving}
+                  className="col-span-2 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-3 text-sm font-medium text-rose-200 transition-colors hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Supprimer du stock
+                </button>
               </div>
             </div>
           ))}
@@ -1705,6 +1769,14 @@ export default function InventoryPage() {
                         }`}
                       >
                         Préparer le réappro
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteProduct(product)}
+                        disabled={isSaving}
+                        className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-200 transition-colors hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Supprimer
                       </button>
                     </div>
                   </td>

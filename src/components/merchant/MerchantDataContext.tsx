@@ -102,6 +102,10 @@ interface UpdateInventoryProductInput {
   isActive: boolean;
 }
 
+interface DeleteInventoryProductInput {
+  productId: string;
+}
+
 interface AdjustInventoryProductStockInput {
   productId: string;
   reason: Exclude<
@@ -167,6 +171,9 @@ interface MerchantDataContextValue {
   updateInventoryProduct: (
     input: UpdateInventoryProductInput
   ) => Promise<MerchantProduct>;
+  deleteInventoryProduct: (
+    input: DeleteInventoryProductInput
+  ) => Promise<MerchantProduct | null>;
   adjustInventoryProductStock: (
     input: AdjustInventoryProductStockInput
   ) => Promise<{
@@ -1154,6 +1161,37 @@ export function MerchantDataProvider({
     [upsertInventoryProducts]
   );
 
+  const deleteInventoryProduct = useCallback(
+    async ({
+      productId,
+    }: DeleteInventoryProductInput): Promise<MerchantProduct | null> => {
+      const currentState = stateRef.current;
+      const currentProduct =
+        currentState.products.find((product) => product.id === productId) ?? null;
+
+      if (!currentProduct) {
+        return null;
+      }
+
+      const nextProduct: MerchantProduct = {
+        ...currentProduct,
+        isActive: false,
+      };
+
+      await upsertInventoryProducts([nextProduct]);
+
+      setState((current) => ({
+        ...current,
+        products: current.products.map((product) =>
+          product.id === nextProduct.id ? nextProduct : product
+        ),
+      }));
+
+      return nextProduct;
+    },
+    [upsertInventoryProducts]
+  );
+
   const adjustInventoryProductStock = useCallback(
     async ({
       productId,
@@ -1922,6 +1960,7 @@ export function MerchantDataProvider({
         createOrders,
         createInventoryProduct,
         updateInventoryProduct,
+        deleteInventoryProduct,
         adjustInventoryProductStock,
         launchDraftOrder,
         syncDraftOrder,
