@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -656,7 +656,31 @@ function InventoryFilterSheet({
   );
 }
 
-export default function MobileInventoryPage() {
+function InventoryLoading() {
+  return (
+    <MobilePageShell active="inventory">
+      <TopHeader showSearch />
+      <main className="mt-8 space-y-5 pb-40">
+        <section>
+          <p className="text-xs font-bold uppercase tracking-[0.35em] text-blue-400">
+            Inventory
+          </p>
+          <h1 className="mt-3 text-3xl font-black leading-tight text-white">
+            Inventory
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            Manage your stock, prices and product availability.
+          </p>
+        </section>
+        <SectionCard className="p-5 text-sm font-semibold text-slate-300">
+          Loading inventory...
+        </SectionCard>
+      </main>
+    </MobilePageShell>
+  );
+}
+
+function MobileInventoryContent() {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1008,5 +1032,13 @@ export default function MobileInventoryPage() {
         />
       ) : null}
     </MobilePageShell>
+  );
+}
+
+export default function MobileInventoryPage() {
+  return (
+    <Suspense fallback={<InventoryLoading />}>
+      <MobileInventoryContent />
+    </Suspense>
   );
 }
