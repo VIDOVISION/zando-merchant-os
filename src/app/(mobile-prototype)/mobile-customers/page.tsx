@@ -10,6 +10,7 @@ import {
   StatusBadge,
   TopHeader,
 } from "@/components/mobile-prototype/components";
+import { NewOrderModal } from "../_components/NewOrderModal";
 import { createClient } from "@/lib/supabase/client";
 
 type EffectiveOrderStatus =
@@ -306,6 +307,7 @@ export default function MobileCustomersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<CustomerFilter>("All");
   const [message, setMessage] = useState<string | null>(null);
+  const [newOrderCustomerName, setNewOrderCustomerName] = useState<string | null>(null);
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
@@ -469,11 +471,24 @@ export default function MobileCustomersPage() {
             <CustomerCard
               key={customer.name}
               customer={customer}
-              onNewOrder={() => setMessage("New order creation coming soon")}
+              onNewOrder={() => setNewOrderCustomerName(customer.name)}
             />
           ))}
         </section>
       </main>
+
+      <NewOrderModal
+        customerSuggestions={customers.map((customer) => customer.name)}
+        defaultCustomerName={newOrderCustomerName ?? undefined}
+        onOpenChange={(open) => {
+          if (!open) setNewOrderCustomerName(null);
+        }}
+        onOrderCreated={({ order }) => {
+          setOrders((currentOrders) => [order, ...currentOrders]);
+          setMessage("Order created");
+        }}
+        open={newOrderCustomerName !== null}
+      />
     </MobilePageShell>
   );
 }

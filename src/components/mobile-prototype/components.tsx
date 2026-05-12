@@ -140,8 +140,14 @@ export function MobilePageShell({
 }
 
 export function TopHeader({
+  notificationCount = 0,
+  onNotificationsClick,
+  onProfileClick,
   showSearch = false,
 }: {
+  notificationCount?: number;
+  onNotificationsClick?: () => void;
+  onProfileClick?: () => void;
   showSearch?: boolean;
 }) {
   return (
@@ -155,13 +161,27 @@ export function TopHeader({
             <Search className="h-6 w-6" />
           </button>
         ) : null}
-        <button className="relative flex h-10 w-10 items-center justify-center rounded-2xl text-slate-300" type="button" aria-label="Notifications">
+        <button
+          className="relative flex h-10 w-10 items-center justify-center rounded-2xl text-slate-300 transition hover:bg-white/5"
+          type="button"
+          aria-label="Notifications"
+          onClick={onNotificationsClick}
+        >
           <Bell className="h-6 w-6" />
-          <span className="absolute right-2 top-1.5 h-2.5 w-2.5 rounded-full bg-orange-500 ring-2 ring-[#06111d]" />
+          {notificationCount > 0 ? (
+            <span className="absolute right-0.5 top-0 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-black text-white ring-2 ring-[#06111d]">
+              {notificationCount > 9 ? "9+" : notificationCount}
+            </span>
+          ) : null}
         </button>
-        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-gradient-to-br from-orange-500 to-slate-900 text-sm font-bold">
+        <button
+          type="button"
+          aria-label="Open profile menu"
+          onClick={onProfileClick}
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-gradient-to-br from-orange-500 to-slate-900 text-sm font-bold transition hover:scale-[1.02]"
+        >
           PS
-        </div>
+        </button>
       </div>
     </header>
   );
