@@ -1,76 +1,48 @@
-# Zando Merchant OS
+# Zando Mobile Supplier MVP
 
-Zando Merchant OS is a lightweight merchant operating system built for neighborhood retailers.
+Zando is a mobile-first supplier/grossiste dashboard built for small distributors, beverage depots, bars, shops, and neighborhood retail networks in the DRC.
 
-It helps merchants:
+This MVP focuses on the **supplier/grossiste side** of the business: receiving boutique orders, managing stock, preparing deliveries, tracking collections, and understanding customer/product performance.
 
-* monitor stock
-* prepare supplier reorders
-* track deliveries
-* record sales
-* follow cash movements
-* manage basic shop settings
+---
 
-## Current status
+## Current MVP Status
 
-MVP in active testing.
+The current version is a working mobile supplier dashboard connected to Supabase.
 
-Core flows currently covered:
+Validated workflows:
 
-* product and stock monitoring
-* add product
-* manual stock adjustment
-* reorder preparation
-* supplier order tracking
-* delivery follow-up
-* sales recording
-* payments overview
-* merchant settings
+- Orders load from Supabase
+- Order status updates persist
+- Inventory loads from Supabase
+- Stock updates persist
+- Preparing an order deducts stock once
+- Double stock deduction protection works
+- Deliveries reflect order movement
+- Delivered orders appear in finances
+- Collection confirmation updates available balance
+- Customers are grouped from order history
+- Product insights show best-selling product performance
+- Quick Sale works
+- New Order works
+- Production build passes
 
-## Tech stack
+---
 
-* Next.js
-* React
-* TypeScript
-* Tailwind CSS
-* Supabase
+## Tech Stack
 
-## Local development
+- Next.js App Router
+- React
+- TypeScript
+- Tailwind CSS
+- Supabase
+- lucide-react
 
-Clone the repository:
+---
 
-```bash
-git clone https://github.com/VIDOVISION/zando-merchant-os.git
-cd zando-merchant-os
-```
+## Main Routes
 
-Install dependencies:
+### Dashboard
 
-```bash
-npm install
-```
-
-Run the dev server:
-
-```bash
-npm run dev
-```
-
-## Environment variables
-
-Create a `.env.local` file and add the required environment variables:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-## Database
-
-The project uses Supabase for persistence.
-
-SQL migrations are stored in the `migrations/` folder.
-
-## Notes
-
-This project is currently focused on delivering a clean, practical MVP for merchant workflow testing before broader rollout and mobile adaptation.
+```txt
+/mobile-dashboard
