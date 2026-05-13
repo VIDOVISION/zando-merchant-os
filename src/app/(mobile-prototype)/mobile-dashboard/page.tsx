@@ -2,6 +2,7 @@
 
 import { Box, ChevronRight, DollarSign, Search, X } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -506,17 +507,23 @@ function NotificationsSheet({
 }
 
 function ProfileMenuSheet({
-  onAction,
+  onBusinessProfile,
   onClose,
+  onLogout,
+  onSettings,
+  onSwitchRole,
 }: {
-  onAction: (message: string) => void;
+  onBusinessProfile: () => void;
   onClose: () => void;
+  onLogout: () => void;
+  onSettings: () => void;
+  onSwitchRole: () => void;
 }) {
   const actions = [
-    { label: "Business Profile", message: "Business profile coming soon" },
-    { label: "Settings", message: "Settings coming soon" },
-    { label: "Switch Role", message: "Role switching coming soon" },
-    { label: "Logout", message: "Logout coming soon" },
+    { label: "Business Profile", onClick: onBusinessProfile },
+    { label: "Settings", onClick: onSettings },
+    { label: "Switch Role", onClick: onSwitchRole },
+    { label: "Logout", onClick: onLogout },
   ];
 
   return (
@@ -565,11 +572,8 @@ function ProfileMenuSheet({
             <button
               key={action.label}
               type="button"
-              onClick={() => {
-                onAction(action.message);
-                onClose();
-              }}
-              className="flex min-h-12 items-center justify-between rounded-2xl border border-white/10 bg-white/[0.025] px-4 text-left text-sm font-bold text-white"
+              onClick={action.onClick}
+              className="relative z-10 flex min-h-12 w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.025] px-4 text-left text-sm font-bold text-white"
             >
               {action.label}
               <ChevronRight className="h-4 w-4 text-slate-500" />
@@ -582,6 +586,7 @@ function ProfileMenuSheet({
 }
 
 export default function MobileDashboardPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<SupplierOrderRow[]>([]);
   const [orderItems, setOrderItems] = useState<SupplierOrderItemRow[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItemRow[]>([]);
@@ -731,6 +736,16 @@ export default function MobileDashboardPage() {
     if (savingQuickSale) return;
     setShowQuickSale(false);
     setQuickSaleError(null);
+  }
+
+  function handleProfileToastAction(nextMessage: string) {
+    setShowProfileMenu(false);
+    setMessage(nextMessage);
+  }
+
+  function handleProfileLogout() {
+    setShowProfileMenu(false);
+    router.push("/login");
   }
 
   function updateQuickSaleForm(field: keyof QuickSaleForm, value: string) {
@@ -1288,8 +1303,11 @@ export default function MobileDashboardPage() {
 
       {showProfileMenu ? (
         <ProfileMenuSheet
-          onAction={(profileMessage) => setMessage(profileMessage)}
+          onBusinessProfile={() => handleProfileToastAction("Business profile coming soon")}
           onClose={() => setShowProfileMenu(false)}
+          onLogout={handleProfileLogout}
+          onSettings={() => handleProfileToastAction("Settings coming soon")}
+          onSwitchRole={() => handleProfileToastAction("Role switching coming soon")}
         />
       ) : null}
     </MobilePageShell>
