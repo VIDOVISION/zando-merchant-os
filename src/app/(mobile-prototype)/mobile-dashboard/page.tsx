@@ -748,6 +748,11 @@ export default function MobileDashboardPage() {
     router.push("/login");
   }
 
+  function handleProfileSwitchRole() {
+    setShowProfileMenu(false);
+    router.push("/mobile-role-select");
+  }
+
   function updateQuickSaleForm(field: keyof QuickSaleForm, value: string) {
     setQuickSaleForm((currentForm) => ({ ...currentForm, [field]: value }));
   }
@@ -1307,7 +1312,7 @@ export default function MobileDashboardPage() {
           onClose={() => setShowProfileMenu(false)}
           onLogout={handleProfileLogout}
           onSettings={() => handleProfileToastAction("Settings coming soon")}
-          onSwitchRole={() => handleProfileToastAction("Role switching coming soon")}
+          onSwitchRole={handleProfileSwitchRole}
         />
       ) : null}
     </MobilePageShell>

@@ -2,6 +2,12 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname === '/') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/mobile-role-select';
+    return NextResponse.redirect(url);
+  }
+
   let supabaseResponse = NextResponse.next({ request });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,9 +27,22 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   // Redirect unauthenticated users — deny-all-except-public pattern
-  const PUBLIC_PATHS = ['/login', '/signup', '/success', '/cancel', '/unauthorized'];
-  const isPublic = PUBLIC_PATHS.some(p => request.nextUrl.pathname.startsWith(p))
-    || request.nextUrl.pathname.startsWith('/api/');
+  const PUBLIC_PATHS = [
+    '/login',
+    '/signup',
+    '/success',
+    '/cancel',
+    '/unauthorized',
+    '/mobile-role-select',
+    '/mobile-shop',
+    '/mobile-shop-dashboard',
+    '/mobile-shop-add-sale',
+    '/mobile-shop-cart',
+    '/mobile-shop-coming-soon',
+  ];
+  const isPublic = PUBLIC_PATHS.some(
+    (path) => request.nextUrl.pathname === path || request.nextUrl.pathname.startsWith(`${path}/`)
+  ) || request.nextUrl.pathname.startsWith('/api/');
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';

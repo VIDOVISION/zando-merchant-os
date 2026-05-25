@@ -7,7 +7,6 @@ import {
   Bell,
   Box,
   BriefcaseBusiness,
-  ChevronDown,
   ChevronRight,
   Clock3,
   DollarSign,
@@ -15,7 +14,6 @@ import {
   Store,
   LayoutGrid,
   MapPin,
-  MoreVertical,
   Package,
   PackageCheck,
   Search,
@@ -27,7 +25,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import type { CustomerOrder, DeliveryItem, MobileStat, ProductLine, StatIconName, Tone } from "./mock-data";
+import type { DeliveryItem, MobileStat, ProductLine, StatIconName, Tone } from "./mock-data";
 
 type MobileNavId =
   | "dashboard"
@@ -124,17 +122,23 @@ function productInitials(name: string): string {
 export function MobilePageShell({
   children,
   active,
+  hideBottomNav = false,
 }: {
   children: ReactNode;
   active: MobileNavId;
+  hideBottomNav?: boolean;
   navVariant?: "standard" | "deliveries";
 }) {
   return (
     <div className="min-h-screen bg-[#020812] text-white">
-      <div className="mx-auto min-h-screen w-full max-w-[480px] bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.14),transparent_30%),linear-gradient(180deg,#06111d_0%,#020812_42%,#020812_100%)] px-5 pb-36 pt-6 shadow-2xl shadow-black/50 sm:max-w-[520px]">
+      <div
+        className={`mx-auto min-h-screen w-full max-w-[480px] bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.14),transparent_30%),linear-gradient(180deg,#06111d_0%,#020812_42%,#020812_100%)] px-5 pt-6 shadow-2xl shadow-black/50 sm:max-w-[520px] ${
+          hideBottomNav ? "pb-8" : "pb-36"
+        }`}
+      >
         {children}
       </div>
-      <BottomNavigation active={active} />
+      {hideBottomNav ? null : <BottomNavigation active={active} />}
     </div>
   );
 }
@@ -224,10 +228,6 @@ function BottomNavigation({
       </div>
     </nav>
   );
-}
-
-function getOrderDetailsHref(orderId: string): string {
-  return `/mobile-orders/${encodeURIComponent(orderId.replace(/^#/, ""))}`;
 }
 
 export function SectionCard({
@@ -349,108 +349,6 @@ export function ProductListItem({ product }: { product: ProductLine }) {
       </div>
       {product.amount ? <p className="font-semibold text-white">{product.amount}</p> : null}
     </div>
-  );
-}
-
-export function MiniChart() {
-  const bars = [18, 24, 23, 22, 32, 47, 33, 39, 51, 65, 45, 68, 54, 75, 41];
-  return (
-    <SectionCard className="p-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-white">Sales Summary</h2>
-          <p className="mt-4 flex items-center gap-2 text-sm text-slate-300">
-            <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-            Revenue
-          </p>
-          <p className="mt-3 text-2xl font-bold text-white">$425K</p>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-slate-300">
-          This Week <ChevronDown className="h-4 w-4" /> <MoreVertical className="h-5 w-5" />
-        </div>
-      </div>
-      <div className="relative mt-6 h-44">
-        <div className="absolute inset-x-0 bottom-8 top-0 grid grid-rows-4">
-          <div className="border-b border-white/10" />
-          <div className="border-b border-white/10" />
-          <div className="border-b border-white/10" />
-          <div className="border-b border-white/10" />
-        </div>
-        <div className="absolute bottom-8 left-0 right-0 flex h-32 items-end gap-1.5 pl-14">
-          {bars.map((height, index) => (
-            <div key={index} className="flex-1 rounded-t bg-blue-600/80" style={{ height: `${height}%` }} />
-          ))}
-        </div>
-        <svg className="absolute bottom-8 left-14 right-0 h-32 w-[calc(100%-3.5rem)] overflow-visible" viewBox="0 0 300 120" preserveAspectRatio="none">
-          <polyline points="0,95 35,60 62,80 105,20 132,55 168,10 205,82 238,45 270,70 300,25" fill="none" stroke="#f97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        <div className="absolute bottom-0 left-14 right-0 flex justify-between text-xs text-slate-400">
-          <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-        </div>
-        <div className="absolute bottom-8 left-0 top-0 flex flex-col justify-between text-xs text-slate-400">
-          <span>$60K</span><span>$40K</span><span>$20K</span><span>$0</span>
-        </div>
-      </div>
-    </SectionCard>
-  );
-}
-
-export function OrderCard({ order }: { order: CustomerOrder }) {
-  const tone = toneStyles[getStatusTone(order.status)];
-  const nextAction =
-    order.status === "Pending"
-      ? "Confirm Order"
-      : order.status === "Confirmed"
-        ? "Prepare Order"
-        : order.status === "In Transit"
-          ? "Track Order"
-          : "View Receipt";
-
-  return (
-    <SectionCard className="overflow-hidden">
-      <div className="flex items-start gap-4 p-4">
-        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${tone.bg} ${tone.text}`}>
-          <BriefcaseBusiness className="h-7 w-7" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-lg font-bold text-white">Order {order.id}</h3>
-          <p className="mt-1 flex items-center gap-1 text-sm text-slate-300">
-            <MapPin className="h-4 w-4 text-blue-400" />
-            {order.store}
-          </p>
-          <p className="mt-1 text-sm text-slate-400">{order.items} <span className="px-1">-</span> {order.time}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-lg font-bold text-white">{order.amount}</p>
-          <p className="mt-1 text-xs text-slate-400">{order.payment}</p>
-          <div className="mt-3"><StatusBadge status={order.status} /></div>
-        </div>
-      </div>
-      <div className="grid gap-3 border-t border-white/10 p-4 min-[390px]:grid-cols-[1fr_auto] min-[390px]:items-center">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex -space-x-2">
-            {order.products.slice(0, 2).map((product) => (
-              <ProductThumb key={product.name} product={product} size="sm" />
-            ))}
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm text-slate-200">{order.products.map((product) => product.name).join(", ")}</p>
-            {order.products.length > 1 ? <p className="text-xs text-slate-400">+1 more</p> : null}
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Link
-            href={getOrderDetailsHref(order.id)}
-            className="flex items-center justify-center rounded-xl border border-white/15 px-3 py-2 text-sm font-medium text-slate-200"
-          >
-            View Details
-          </Link>
-          <button className={`rounded-xl px-3 py-2 text-sm font-semibold ${tone.button}`} type="button">
-            {nextAction}
-          </button>
-        </div>
-      </div>
-    </SectionCard>
   );
 }
 
