@@ -82,11 +82,19 @@ export default function MobileShopDashboardPage() {
   const [shopInventory, setShopInventory] = useState<ZandoShopInventoryItem[]>([]);
   const [pendingSupplierOrders, setPendingSupplierOrders] = useState(0);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [showSaleSavedMessage, setShowSaleSavedMessage] = useState(false);
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     setSales(getShopSales());
     setShopInventory(getShopInventory());
+
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get("saleSaved") === "1") {
+      setShowSaleSavedMessage(true);
+      const timeout = window.setTimeout(() => setShowSaleSavedMessage(false), 3600);
+      return () => window.clearTimeout(timeout);
+    }
   }, []);
 
   useEffect(() => {
@@ -166,6 +174,12 @@ export default function MobileShopDashboardPage() {
         </section>
 
         <ShopNavigation />
+
+        {showSaleSavedMessage ? (
+          <SectionCard className="border-emerald-400/20 bg-emerald-500/10 p-4 text-sm font-semibold text-emerald-100">
+            Sale saved successfully
+          </SectionCard>
+        ) : null}
 
         <section className="grid grid-cols-2 gap-3">
           <Link

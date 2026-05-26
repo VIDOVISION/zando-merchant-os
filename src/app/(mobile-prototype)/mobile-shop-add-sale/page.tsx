@@ -138,7 +138,7 @@ export default function MobileShopAddSalePage() {
       created_at: new Date().toISOString(),
     });
 
-    router.push("/mobile-shop-dashboard");
+    router.push("/mobile-shop-dashboard?saleSaved=1");
   }
 
   return (

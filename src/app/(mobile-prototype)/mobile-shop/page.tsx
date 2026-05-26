@@ -96,10 +96,6 @@ function ShopHeader() {
   );
 }
 
-function ShopNav() {
-  return <ShopNavigation />;
-}
-
 export default function MobileShopPage() {
   const [products, setProducts] = useState<InventoryItemRow[]>([]);
   const [cart, setCart] = useState<ZandoShopCartItem[]>([]);
@@ -235,7 +231,7 @@ export default function MobileShopPage() {
           </p>
         </section>
 
-        <ShopNav />
+        <ShopNavigation />
 
         <SectionCard className="p-4">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-400">
